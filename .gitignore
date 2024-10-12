@@ -1,0 +1,8 @@
+node_modules
+
+/.cache
+/build
+/public/build
+/coverage
+/playwright-report
+/test-results

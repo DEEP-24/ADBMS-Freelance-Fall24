@@ -1,0 +1,236 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model Admin {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName String
+  lastName  String
+  dob       DateTime
+  phoneNo   String
+  address   String
+
+  email    String @unique
+  password String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("admin")
+}
+
+model Customer {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  firstName String
+  lastName  String
+  dob       DateTime
+  phoneNo   String
+  address   String
+  email     String     @unique
+  password  String
+  payment   Payment[]
+  Post      Post[]
+  Projects  Project[]
+  documents Document[]
+  feedbacks Feedback[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("customers")
+}
+
+model Editor {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  firstName  String
+  lastName   String
+  dob        DateTime
+  phoneNo    String
+  address    String
+  email      String   @unique
+  password   String
+  skills     String
+  experience String
+  portfolio  String
+  awards     String
+
+  Bid      Bid[]
+  payments Payment[]
+  projects Project[]
+
+  documents Document[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("editors")
+}
+
+model Post {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  title       String
+  description String
+  budget      Float
+  duration    Int
+  status      PostStatus
+  deadline    DateTime
+  bids        Bid[]
+
+  category   Categories @relation(fields: [categoryId], references: [id])
+  categoryId String     @db.ObjectId
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String   @db.ObjectId
+
+  project   Project[]
+  documents Document[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("posts")
+}
+
+model Categories {
+  id          String @id @default(auto()) @map("_id") @db.ObjectId
+  name        String
+  description String
+  image       String
+  post        Post[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("categories")
+}
+
+model Bid {
+  id       String  @id @default(auto()) @map("_id") @db.ObjectId
+  price    Float
+  comment  String
+  approved Boolean @default(false)
+  declined Boolean @default(false)
+
+  editor   Editor @relation(fields: [editorId], references: [id])
+  editorId String @db.ObjectId
+
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("bids")
+}
+
+model Project {
+  id                String        @id @default(auto()) @map("_id") @db.ObjectId
+  status            ProjectStatus
+  payment           Payment?
+  customerDocuments Document[]    @relation("CustomerDocuments")
+  editorDocuments   Document[]    @relation("EditorDocuments")
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String   @db.ObjectId
+
+  editor   Editor @relation(fields: [editorId], references: [id])
+  editorId String @db.ObjectId
+
+  post   Post   @relation(fields: [postId], references: [id])
+  postId String @db.ObjectId
+
+  feedback Feedback[]
+
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  Document  Document[]
+
+  @@map("projects")
+}
+
+model Payment {
+  id            String        @id @default(auto()) @map("_id") @db.ObjectId
+  amount        Float
+  paymentMethod PaymentMethod
+
+  customer   Customer @relation(fields: [customerId], references: [id])
+  customerId String   @db.ObjectId
+  editor     Editor   @relation(fields: [editorId], references: [id])
+  editorId   String   @db.ObjectId
+  project    Project? @relation(fields: [projectId], references: [id])
+  projectId  String?  @unique @db.ObjectId
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("payments")
+}
+
+model Document {
+  id          String       @id @default(auto()) @map("_id") @db.ObjectId
+  key         String       @unique
+  name        String
+  description String?
+  extension   String
+  bucket      String
+  region      String
+  imageUrl    String
+  type        DocumentType
+
+  editor            Editor?   @relation(fields: [editorId], references: [id])
+  editorId          String?   @db.ObjectId
+  post              Post?     @relation(fields: [postId], references: [id])
+  postId            String?   @db.ObjectId
+  project           Project   @relation(fields: [projectId], references: [id])
+  projectId         String    @db.ObjectId
+  Customer          Customer? @relation(fields: [customerId], references: [id])
+  customerId        String?   @db.ObjectId
+  customerProject   Project?  @relation("CustomerDocuments", fields: [customerProjectId], references: [id])
+  customerProjectId String?   @db.ObjectId
+  editorProject     Project?  @relation("EditorDocuments", fields: [editorProjectId], references: [id])
+  editorProjectId   String?   @db.ObjectId
+}
+
+model Feedback {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  rating    Int
+  comment   String
+
+  Customer   Customer? @relation(fields: [customerId], references: [id])
+  customerId String?   @db.ObjectId
+
+  Project   Project? @relation(fields: [projectId], references: [id])
+  projectId String?  @db.ObjectId
+
+  @@map("reviews")
+}
+
+enum PostStatus {
+  open
+  closed
+  in_progress
+  completed
+}
+
+enum ProjectStatus {
+  in_progress
+  completed
+  payment_pending
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  DEBIT_CARD
+}
+
+enum DocumentType {
+  SOURCE
+  EDITED
+}
