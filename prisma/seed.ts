@@ -1,315 +1,152 @@
 import { faker } from "@faker-js/faker";
-import { PrismaClient, Role } from "@prisma/client";
-import slugify from "slugify";
-import { createPasswordHash } from "~/utils/misc";
+import {
+  DocumentType,
+  PaymentMethod,
+  PostStatus,
+  PrismaClient,
+  ProjectStatus,
+} from "@prisma/client";
+import bcrypt from "bcryptjs";
 
 const db = new PrismaClient();
 
+const hashedPassword = await bcrypt.hash("password", 10);
+
 async function seed() {
-  await db.category.deleteMany();
-  await db.item.deleteMany();
-  await db.foodTruck.deleteMany();
-  await db.user.deleteMany();
-  await db.order.deleteMany();
-  await db.itemOrder.deleteMany();
-  await db.itemOrder.deleteMany();
-  await db.invoice.deleteMany();
+  // Delete existing data
+  await db.feedback.deleteMany();
+  await db.document.deleteMany();
+  await db.payment.deleteMany();
+  await db.project.deleteMany();
+  await db.bid.deleteMany();
+  await db.post.deleteMany();
+  await db.categories.deleteMany();
+  await db.editor.deleteMany();
+  await db.customer.deleteMany();
+  await db.admin.deleteMany();
 
-  const user = await db.user.upsert({
-    where: {
-      email: "user@app.com",
-    },
-    update: {},
-    create: {
+  // Create an admin
+  await db.admin.create({
+    data: {
       firstName: faker.name.firstName(),
       lastName: faker.name.lastName(),
-      email: "user@app.com",
-      phoneNo: "123-456-7890",
+      dob: faker.date.past(),
+      phoneNo: faker.phone.number(),
       address: faker.address.streetAddress(),
-      passwordHash: await createPasswordHash("password"),
+      email: "admin@app.com",
+      password: hashedPassword,
     },
   });
 
-  await db.user.create({
+  // Create a customer
+  const customer = await db.customer.create({
     data: {
       firstName: faker.name.firstName(),
       lastName: faker.name.lastName(),
-      email: "admin@app.com",
-      passwordHash: await createPasswordHash("password"),
-      role: Role.ADMIN,
+      dob: faker.date.past(),
+      phoneNo: faker.phone.number(),
+      address: faker.address.streetAddress(),
+      email: "customer@app.com",
+      password: hashedPassword,
     },
   });
 
-  await db.wallet.create({
+  // Create an editor
+  const editor = await db.editor.create({
     data: {
-      balance: 1000,
-      userId: user.id,
+      firstName: faker.name.firstName(),
+      lastName: faker.name.lastName(),
+      dob: faker.date.past(),
+      phoneNo: faker.phone.number(),
+      address: faker.address.streetAddress(),
+      email: "editor@app.com",
+      password: hashedPassword,
+      skills: "Editing, Proofreading",
+      experience: "5 years",
+      portfolio: "https://example.com/portfolio",
+      awards: "Best Editor 2022",
     },
   });
 
-  const IndianCategory = await db.category.create({
+  // Create categories
+  const category = await db.categories.create({
     data: {
-      name: "Indian",
-      imageUrl: "https://cdn.pixabay.com/photo/2024/05/31/05/47/ai-generated-8799843_1280.jpg",
+      name: "General Editing",
+      description: "General editing services",
+      image: "https://example.com/general-editing.jpg",
     },
   });
 
-  const MexicanCategory = await db.category.create({
+  // Create a post
+  const post = await db.post.create({
     data: {
-      name: "Mexican",
-      imageUrl: "https://cdn.pixabay.com/photo/2024/05/19/13/19/ai-generated-8772597_1280.jpg",
+      title: "Need editing for my novel",
+      description: "Looking for an experienced editor for my 80,000-word novel",
+      budget: 500,
+      duration: 30,
+      status: PostStatus.open,
+      deadline: faker.date.future(),
+      categoryId: category.id,
+      customerId: customer.id,
     },
   });
 
-  const ItalianCategory = await db.category.create({
+  // Create a bid
+  await db.bid.create({
     data: {
-      name: "Italian",
-      imageUrl: "https://cdn.pixabay.com/photo/2024/08/13/21/21/ai-generated-8967244_1280.jpg",
+      price: 450,
+      comment: "I'd love to work on your novel. I have experience with fiction editing.",
+      editorId: editor.id,
+      postId: post.id,
     },
   });
 
-  const ft1 = await db.foodTruck.create({
+  // Create a project
+  const project = await db.project.create({
     data: {
-      name: "Sloppy Sandwiches",
-      slug: slugify("Sloppy Sandwiches", { lower: true, strict: true }),
-      location: "1234 Main St, San Francisco, CA 94111",
-      phoneNo: "123-456-7890",
-      image:
-        "https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1471&q=80",
-      items: {
-        create: [
-          {
-            name: "Burger",
-            image:
-              "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=999&q=80",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("burger-20", { lower: true, strict: true }),
-            description:
-              "Sink your teeth into juicy perfection with our mouth-watering burgers, made to order and served fresh from our food truck!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: ItalianCategory.id,
-                  },
-                },
-              },
-            },
-          },
-          {
-            name: "Pizza",
-            image:
-              "https://images.unsplash.com/photo-1513104890138-7c749659a591?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("pizza-02", { lower: true, strict: true }),
-            description:
-              "Hot, fresh, and always on-the-go: grab a slice of heaven from our sizzling food truck today!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: ItalianCategory.id,
-                  },
-                },
-              },
-            },
-          },
-          {
-            name: "Mac & Cheese",
-            image:
-              "https://plus.unsplash.com/premium_photo-1669687760005-89584766cd99?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1470&q=80",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("Mac & Cheese-20", { lower: true, strict: true }),
-            description:
-              "Get your comfort food fix with our creamy, cheesy mac & cheese, made with love and ready to warm your soul from our food truck!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: ItalianCategory.id,
-                  },
-                },
-              },
-            },
-          },
-          {
-            name: "Paneer Tikka",
-            image:
-              "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=400&auto=format&fit=crop&q=60&ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxzZWFyY2h8Mnx8cGFuZWVyJTIwdGlra2F8ZW58MHx8MHx8fDA%3D",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("Paneer Tikka-20", { lower: true, strict: true }),
-            description:
-              "Get your comfort food fix with our creamy, cheesy mac & cheese, made with love and ready to warm your soul from our food truck!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: IndianCategory.id,
-                  },
-                },
-              },
-            },
-          },
-        ],
-      },
+      status: ProjectStatus.in_progress,
+      customerId: customer.id,
+      editorId: editor.id,
+      postId: post.id,
     },
   });
 
-  const ft2 = await db.foodTruck.create({
+  // Create a payment
+  await db.payment.create({
     data: {
-      name: "Good Food on Wheels",
-      slug: slugify("grab-on-wheels", { lower: true, strict: true }),
-      location: "1234 Main St, Cincinnati, OH 94111",
-      phoneNo: "123-456-7890",
-      image:
-        "https://images.unsplash.com/photo-1567129937968-cdad8f07e2f8?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1049&q=80",
-      items: {
-        create: [
-          {
-            name: "Nachos",
-            image:
-              "https://images.unsplash.com/photo-1513456852971-30c0b8199d4d?ixlib=rb-4.0.3&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=735&q=80",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("Nachos-05", { lower: true, strict: true }),
-            description:
-              "Crunchy, cheesy, and loaded with flavor: our nachos are the ultimate snack to satisfy your cravings on-the-go from our food truck!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: MexicanCategory.id,
-                  },
-                },
-              },
-            },
-          },
-          {
-            name: "Tacos",
-            image:
-              "https://images.unsplash.com/photo-1620589125156-fd5028c5e05b?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2687&q=80",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("taco-s2", { lower: true, strict: true }),
-            description:
-              "Spice up your day with our delicious tacos, packed with fresh ingredients and bursting with authentic flavors from our food truck!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: MexicanCategory.id,
-                  },
-                },
-              },
-            },
-          },
-          {
-            name: "Mexican Rice",
-            image:
-              "https://images.unsplash.com/photo-1563861019306-9cccb83bdf0c?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=2671&q=80",
-            price: Number(faker.finance.amount(5, 50, 2)),
-            quantity: 1,
-            slug: slugify("mexican-rice", { lower: true, strict: true }),
-            description:
-              "Take your taste buds on a journey with our savory Mexican rice, a perfect side dish that will transport you straight to the heart of Mexico, from our food truck!",
-            categories: {
-              create: {
-                category: {
-                  connect: {
-                    id: MexicanCategory.id,
-                  },
-                },
-              },
-            },
-          },
-        ],
-      },
+      amount: 450,
+      paymentMethod: PaymentMethod.CREDIT_CARD,
+      customerId: customer.id,
+      editorId: editor.id,
+      projectId: project.id,
     },
   });
 
-  await db.user.create({
+  // Create a document
+  await db.document.create({
     data: {
-      email: "manager@app.com",
-      firstName: "FT1 Staff",
-      lastName: "FT1 Staff",
-      passwordHash: await createPasswordHash("password"),
-      role: "MANAGER",
-      foodTruckId: ft1.id,
+      key: "novel-draft-1",
+      name: "Novel Draft 1",
+      description: "First draft of the novel",
+      extension: "docx",
+      bucket: "my-bucket",
+      region: "us-west-2",
+      imageUrl: "https://example.com/document-icon.png",
+      type: DocumentType.SOURCE,
+      projectId: project.id,
+      customerId: customer.id,
     },
   });
 
-  await db.user.create({
+  // Create a feedback
+  await db.feedback.create({
     data: {
-      email: "manager02@app.com",
-      firstName: "FT2 Staff",
-      lastName: "FT2 Staff",
-      passwordHash: await createPasswordHash("password"),
-      role: "MANAGER",
-      foodTruckId: ft2.id,
+      rating: 5,
+      comment: "Excellent editing work!",
+      customerId: customer.id,
+      projectId: project.id,
     },
   });
-
-  await db.foodTruckSchedule.createMany({
-    data: [
-      {
-        day: "Monday",
-        // convert 10am to date object
-        startTime: new Date(Date.parse("2023-04-24T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-24T17:00:00")),
-        foodTruckId: ft1.id,
-      },
-      {
-        day: "Wednesday",
-        // convert 10am to date object
-        startTime: new Date(Date.parse("2023-04-24T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-24T17:00:00")),
-        foodTruckId: ft1.id,
-      },
-      {
-        day: "Friday",
-        // convert 10am to date object
-        startTime: new Date(Date.parse("2023-04-24T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-24T17:00:00")),
-        foodTruckId: ft1.id,
-      },
-      {
-        day: "Sunday",
-        // convert 10am to date object
-        startTime: new Date(Date.parse("2023-04-24T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-24T17:00:00")),
-        foodTruckId: ft1.id,
-      },
-    ],
-  });
-
-  await db.foodTruckSchedule.createMany({
-    data: [
-      {
-        day: "Tuesday",
-        startTime: new Date(Date.parse("2023-04-25T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-25T17:00:00")),
-        foodTruckId: ft2.id,
-      },
-      {
-        day: "Thursday",
-        startTime: new Date(Date.parse("2023-04-25T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-25T17:00:00")),
-        foodTruckId: ft2.id,
-      },
-      {
-        day: "Saturday",
-        startTime: new Date(Date.parse("2023-04-25T10:00:00")),
-        endTime: new Date(Date.parse("2023-04-25T17:00:00")),
-        foodTruckId: ft2.id,
-      },
-    ],
-  });
-
-  // }
 
   console.log("Database has been seeded. 🌱");
 }

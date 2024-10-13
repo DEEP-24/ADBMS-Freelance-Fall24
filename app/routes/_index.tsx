@@ -1,38 +1,71 @@
-// import { json } from "@remix-run/node";
-// import { useLoaderData } from "@remix-run/react";
-// import Hero from "~/components/hero";
-// import Navbar from "~/components/navbar";
-// import { getAllCategories, getAllRestaurants } from "~/lib/restaurant.server";
-// import { useOptionalUser } from "~/utils/hooks";
+import type { MetaFunction } from "@remix-run/node";
+import NavBar from "~/components/navbar";
+import { adminActions } from "~/routes/admin+/_layout";
+import { customerActions } from "~/routes/customer+/_layout";
+import { editorActions } from "~/routes/editor+/_layout";
+import { useOptionalUser } from "~/utils/misc";
 
-// export const loader = async () => {
-//   const foodTrucks = await getAllRestaurants();
-//   const categories = await getAllCategories();
-//   const items = foodTrucks.reduce(
-//     (acc, restaurant) => {
-//       restaurant.items.forEach((item) => acc.push(item));
-//       return acc;
-//     },
-//     [] as (typeof foodTrucks)[number]["items"],
-//   );
+export const meta: MetaFunction = () => {
+  return [
+    {
+      title: "Artify | Home",
+    },
+  ];
+};
 
-//   return json({ foodTrucks, items, categories });
-// };
+type User = {
+  name: string;
+  email: string;
+  role: string;
+};
 
-// export default function Dashboard() {
-//   const { foodTrucks, categories, items } = useLoaderData<typeof loader>();
-//   const { user } = useOptionalUser();
+export default function MainPage() {
+  const user = useOptionalUser() as User | null;
 
-//   const navItems = [
-//     { label: "Home", href: "/" },
-//     { label: "FoodTrucks", href: "/app/restaurants" },
-//     { label: "Items", href: "/app/items" },
-//   ];
+  const getNavItems = () => {
+    if (user?.role === "admin") {
+      return adminActions;
+    }
+    if (user?.role === "editor") {
+      return editorActions;
+    }
+    if (user?.role === "customer") {
+      return customerActions;
+    }
+    return [
+      {
+        title: "Home",
+        href: "/",
+      },
+      {
+        title: "Services",
+        href: "/services",
+      },
+    ];
+  };
 
-//   return (
-//     <div className="flex flex-col gap-4 p-4">
-//       <Navbar navItems={navItems} currentUser={user} />
-//       <Hero foodtrucks={foodTrucks} categories={categories} items={items} />
-//     </div>
-//   );
-// }
+  const currentNavItems = getNavItems();
+
+  return (
+    <div>
+      <NavBar navItems={currentNavItems} />
+      <div className="bg-black">
+        <img src="/img/Frame-1.png" alt="Frame-1" className="w-full" />
+      </div>
+      <div className="bg-black">
+        <img src="/img/Frame-2.3.png" alt="Frame-2" className="w-full" />
+      </div>
+      <div className="bg-black">
+        <img src="/img/Frame-3.png" alt="Frame-3" className="w-full" />
+      </div>
+      <div className="bg-black">
+        <img src="/img/Frame-4.png" alt="Frame-4" className="w-full" />
+      </div>
+      <div className="flex items-center justify-center bg-black">
+        <p className="p-3 text-lg font-semibold text-white">
+          Copyright &copy; 2023-30 | All Rights Reserved{" "}
+        </p>
+      </div>
+    </div>
+  );
+}

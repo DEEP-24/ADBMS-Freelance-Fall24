@@ -5,10 +5,7 @@ export default function FourOhFour() {
     <div className="bg-red-500">
       <div className="page_404_div">
         <aside>
-          <img
-            src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/4424790/Mirror.png"
-            alt="404"
-          />
+          <img src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/4424790/Mirror.png" alt="404" />
         </aside>
         <main>
           <h1>Sorry!</h1>

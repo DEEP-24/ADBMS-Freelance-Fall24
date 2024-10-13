@@ -1,6 +1,5 @@
 import { json } from "@remix-run/node";
-import { getUserId } from "~/lib/session.server";
-import { getUserById } from "~/lib/user.server";
+import * as bcrypt from "bcryptjs";
 
 const DEFAULT_REDIRECT = "/";
 
@@ -39,18 +38,6 @@ export function safeRedirect(
   return to;
 }
 
-export async function getOptionalUser(
-  request: Request,
-): Promise<Awaited<ReturnType<typeof getUserById>> | null> {
-  const userId = await getUserId(request);
-  if (userId === undefined) {
-    return null;
-  }
-
-  const user = await getUserById(userId);
-  if (user) {
-    return user;
-  }
-
-  return null;
+export function createPasswordHash(password: string) {
+  return bcrypt.hash(password, 10);
 }
