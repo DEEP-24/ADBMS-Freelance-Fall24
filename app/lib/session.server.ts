@@ -95,6 +95,5 @@ export async function logout(request: Request) {
 export async function getUserRole(request: Request): Promise<string | undefined> {
   const session = await getSession(request);
   const role = session.get(USER_ROLE_KEY);
-  console.log("getUserRole - retrieved role:", role);
   return role;
 }

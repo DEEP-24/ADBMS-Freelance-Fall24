@@ -107,7 +107,6 @@ export default function NewCategoryPost() {
   const [deadline, setDeadline] = React.useState<string>("");
 
   React.useEffect(() => {
-    console.log("Duration: ", duration);
     if (duration !== null && !Number.isNaN(duration) && duration > 0) {
       const today = new Date();
       const calculatedDeadline = new Date(today);
