@@ -1,5 +1,5 @@
-import { redirect } from "@remix-run/node"
+import { redirect } from "@remix-run/node";
 
 export function loader() {
-  return redirect("/editor/posts")
+  return redirect("/editor/posts");
 }

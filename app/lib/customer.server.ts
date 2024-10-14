@@ -1,5 +1,5 @@
 import type { Customer } from "@prisma/client";
-import * as bcrypt from "bcryptjs";
+import bcrypt from "bcryptjs";
 import { db } from "~/lib/db.server";
 import { getUserId, logout } from "~/lib/session.server";
 export async function verifyCustomerLogin({

@@ -59,7 +59,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
         <Meta />
         <Links />
       </head>
-      <body suppressHydrationWarning>
+      <body suppressHydrationWarning className="h-screen">
         {children}
         <Toaster richColors closeButton />
         <ScrollRestoration />

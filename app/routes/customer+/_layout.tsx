@@ -2,7 +2,8 @@ import { type LoaderFunctionArgs, redirect } from "@remix-run/node";
 import { Outlet } from "@remix-run/react";
 import NavBar from "~/components/navbar";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { getUserId, getUserRole, isAdmin, isEditor } from "~/lib/session.server";
+import { getUserId, getUserRole } from "~/lib/session.server";
+import { UserRole } from "~/roles";
 
 export const customerActions = [
   {
@@ -28,14 +29,18 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   const userRole = await getUserRole(request);
 
   if (!userId || !userRole) {
-    return null;
+    return redirect("/login");
   }
 
-  if (await isAdmin(request)) {
-    return redirect("/admin");
-  }
-  if (await isEditor(request)) {
-    return redirect("/editor");
+  if (userRole !== UserRole.CUSTOMER) {
+    switch (userRole) {
+      case UserRole.ADMIN:
+        return redirect("/admin");
+      case UserRole.EDITOR:
+        return redirect("/editor");
+      default:
+        return redirect("/login");
+    }
   }
 
   return null;
@@ -48,11 +53,6 @@ export default function CustomerLayout() {
       <ScrollArea className="flex-1 bg-black">
         <Outlet />
       </ScrollArea>
-      <div className="flex items-center justify-center bg-black">
-        <p className="p-3 text-lg font-semibold text-white">
-          Copyright &copy; 2023-30 | All Rights Reserved{" "}
-        </p>
-      </div>
     </div>
   );
 }
