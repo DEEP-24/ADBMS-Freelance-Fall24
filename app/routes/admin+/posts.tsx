@@ -53,12 +53,15 @@ export default function Posts() {
                     </CardDescription>
                   </div>
                   <Badge
-                    variant={
-                      post.status === "completed"
-                        ? "default"
-                        : post.status === "in_progress"
-                          ? "outline"
-                          : "outline"
+                    variant="outline"
+                    className={
+                      post.status === "open"
+                        ? "border-emerald-500 text-emerald-700 bg-emerald-50"
+                        : post.status === "completed"
+                          ? "border-green-500 text-green-700 bg-green-50"
+                          : post.status === "in_progress"
+                            ? "border-yellow-500 text-yellow-700 bg-yellow-50"
+                            : "border-red-500 text-red-700 bg-red-50"
                     }
                   >
                     {post.status}
