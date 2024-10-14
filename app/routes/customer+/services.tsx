@@ -1,9 +1,16 @@
 import { json } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { db } from "~/lib/db.server";
 
 export async function loader() {
-  const services = await db.categories.findMany({});
+  const services = await db.categories.findMany({
+    select: {
+      id: true,
+      name: true,
+      description: true,
+    },
+  });
 
   return json({
     services: services,
@@ -13,47 +20,53 @@ export async function loader() {
 export default function CustomerServicesPage() {
   const { services } = useLoaderData<typeof loader>();
   return (
-    <div className="bg-black py-24 sm:p-16">
-      <div className="mx-auto max-w-7xl px-6 lg:px-8">
-        <div className="mx-auto max-w-2xl lg:text-center">
-          <h2 className="text-4xl font-semibold leading-7 text-red-600">Services</h2>
-          <p className="mt-5 text-2xl font-bold tracking-tight text-gray-500 sm:text-4xl">
-            Everything you need is here 👇🏿
-          </p>
-          <p className="mt-6 text-lg leading-8 text-white">
-            Explore our full suite of professional services tailored to elevate your brand's
-            presence. Experience precision and creativity with our dedicated experts. We're
-            committed to delivering excellence in every project we undertake.
-          </p>
-        </div>
-        <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-          <dl className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
-            {services.map((service) => (
-              <div
-                key={service.name}
-                className="flex flex-col rounded-lg bg-gray-950 ring-1 ring-gray-800 hover:scale-105 hover:shadow-md hover:shadow-white"
+    <div className="w-full mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Services</h1>
+      </div>
+      <p className="text-lg text-gray-600 mb-8">
+        Explore our full suite of professional services tailored to elevate your brand's presence.
+        Experience precision and creativity with our dedicated experts. We're committed to
+        delivering excellence in every project we undertake.
+      </p>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mt-10">
+        {services.map((service) => (
+          <Card
+            key={service.id}
+            className="bg-white shadow-md hover:shadow-lg transition-all duration-300 rounded-lg overflow-hidden flex flex-col"
+          >
+            <CardHeader className="bg-emerald-50 p-6">
+              <CardTitle className="text-2xl font-semibold text-emerald-800">
+                {service.name}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 flex-grow">
+              <p className="text-gray-600 mb-6">{service.description}</p>
+            </CardContent>
+            <div className="px-6 pb-6">
+              <Link
+                to={`/customer/posts/new-post?categoryId=${service.id}`}
+                className="inline-flex items-center text-sm font-medium text-emerald-600 hover:text-emerald-800 transition-colors duration-300"
               >
-                <dt className="flex items-center justify-center gap-x-2 p-4 text-xl font-semibold leading-7 text-white">
-                  <div className="h-5 w-5 flex-none">
-                    <img src={service.image} alt="" />
-                  </div>
-                  {service.name}
-                </dt>
-                <dd className="mt-1 flex flex-auto flex-col items-center justify-center p-6 text-lg leading-7 text-gray-400">
-                  <p className="flex-auto">{service.description}</p>
-                  <p className="mt-6">
-                    <Link
-                      to={`/customer/posts/${encodeURIComponent(service.id)}/new-post`}
-                      className="text-base font-semibold leading-6 text-red-600"
-                    >
-                      Post <span aria-hidden="true">→</span>
-                    </Link>
-                  </p>
-                </dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+                Create Post
+                <svg
+                  className="w-3.5 h-3.5 ml-2"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  xmlns="http://www.w3.org/2000/svg"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M14 5l7 7m0 0l-7 7m7-7H3"
+                  />
+                </svg>
+              </Link>
+            </div>
+          </Card>
+        ))}
       </div>
     </div>
   );

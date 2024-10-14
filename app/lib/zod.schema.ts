@@ -47,3 +47,12 @@ export const EditorSchema = z.object({
   portfolio: z.string().min(1, "Portfolio is required"),
   awards: z.string().min(1, "Awards are required"),
 });
+
+export const CreatePostSchema = z.object({
+  categoryId: z.string().optional(),
+  title: z.string().min(1, "Title is required"),
+  description: z.string().min(1, "Description is required"),
+  budget: z.string().min(1, "Budget must be a positive number"),
+  duration: z.string().min(1, "Duration must be a positive number"),
+  deadline: z.string(),
+});
