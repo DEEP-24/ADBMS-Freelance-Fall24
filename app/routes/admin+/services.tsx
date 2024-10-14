@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
-import { useFetcher, useLoaderData } from "@remix-run/react";
+import { useLoaderData } from "@remix-run/react";
 import { Plus } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
@@ -18,26 +18,27 @@ import {
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Textarea } from "~/components/ui/textarea";
+import { ServiceSchema } from "~/lib/zod.schema";
+import { useFetcherCallback } from "~/utils/use-fetcher-callback";
+import { type inferErrors, validateAction } from "~/utils/validation";
 
 export async function loader() {
   const services = await db.categories.findMany({});
   return json({ services });
 }
 
-type ActionData = {
-  success: boolean;
-  fieldErrors?: {
-    name?: string;
-    description?: string;
-  };
-};
+interface ActionData {
+  fieldErrors?: inferErrors<typeof ServiceSchema>;
+}
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-  const formData = await request.formData();
+  const { fieldErrors, fields } = await validateAction(request, ServiceSchema);
 
-  const name = formData.get("name")?.toString();
-  const description = formData.get("description")?.toString();
+  if (fieldErrors) {
+    return badRequest<ActionData>({ fieldErrors });
+  }
 
+  const { name, description } = fields;
   if (!name) {
     return badRequest({
       success: false,
@@ -70,24 +71,17 @@ export default function ServicesPage() {
   const { services } = useLoaderData<typeof loader>();
   const [isModalOpen, setIsModalOpen] = React.useState(false);
 
-  const fetcher = useFetcher<ActionData>();
-  const isSubmitting = fetcher.state !== "idle";
-
-  React.useEffect(() => {
-    if (isSubmitting) {
-      return;
-    }
-    if (!fetcher.data) {
-      return;
-    }
-
-    if (fetcher.data.success) {
+  const fetcher = useFetcherCallback<ActionData>({
+    onSuccess: () => {
       toast.success("Service added successfully");
       setIsModalOpen(false);
-    } else {
+    },
+    onError: () => {
       toast.error("Failed to add service");
-    }
-  }, [isSubmitting, fetcher.data]);
+    },
+  });
+
+  const isSubmitting = fetcher.isPending;
 
   return (
     <div className="w-full mx-auto">

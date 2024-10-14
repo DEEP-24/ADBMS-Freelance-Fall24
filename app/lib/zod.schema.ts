@@ -28,3 +28,22 @@ export const RegisterSchema = z
     path: ["confirmPassword"],
     message: "Passwords do not match",
   });
+
+export const ServiceSchema = z.object({
+  name: z.string().min(1, "Name is required"),
+  description: z.string().min(1, "Description is required"),
+});
+
+export const EditorSchema = z.object({
+  firstName: z.string().min(1, "First Name is required"),
+  lastName: z.string().min(1, "Last Name is required"),
+  email: z.string().email("Invalid email address"),
+  password: z.string().min(8, "Password must be at least 8 characters"),
+  dob: z.string().min(1, "Date of Birth is required"),
+  phoneNo: z.string().min(1, "Phone Number is required"),
+  address: z.string().min(1, "Address is required"),
+  skills: z.string().min(1, "Skills are required"),
+  experience: z.string().min(1, "Experience is required"),
+  portfolio: z.string().min(1, "Portfolio is required"),
+  awards: z.string().min(1, "Awards are required"),
+});
