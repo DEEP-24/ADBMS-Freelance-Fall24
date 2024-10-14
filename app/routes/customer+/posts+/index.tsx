@@ -61,12 +61,12 @@ export default function CustomerPosts() {
                   <div>
                     <CardTitle className="text-xl font-bold mb-1">{post.title}</CardTitle>
                     <div className="flex items-center text-sm text-gray-500 gap-4">
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-2">
                         <CalendarIcon className="w-4 h-4" />
                         <span>Due on</span>{" "}
                         <time dateTime={post.deadline}>{formatDate(post.deadline)}</time>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex items-center gap-1 mt-2">
                         <FolderIcon className="w-4 h-4" />
                         <span>{post.category.name}</span>
                       </div>
