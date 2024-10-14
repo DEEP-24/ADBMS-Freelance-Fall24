@@ -74,7 +74,7 @@ export const action: ActionFunction = async ({ request }) => {
   return createUserSession({
     request,
     userId: user.id,
-    role: role, // This line is now correct
+    role: role,
     remember: remember === "on",
     redirectTo: safeRedirect(redirectTo || userRoleRedirect[role]),
   });
