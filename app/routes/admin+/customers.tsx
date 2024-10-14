@@ -23,11 +23,8 @@ export default function Customers() {
       {customers.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {customers.map((customer) => (
-            <Card
-              key={customer.id}
-              className="shadow-lg hover:shadow-xl transition-all duration-300 overflow-hidden transform hover:-translate-y-1"
-            >
-              <CardHeader className="bg-gradient-to-r from-blue-600 to-blue-400 text-white p-6">
+            <Card key={customer.id} className="shadow-lg hover:shadow-xl overflow-hidden">
+              <CardHeader className="bg-emerald-500 text-white p-6">
                 <CardTitle className="text-2xl font-bold mb-2">
                   {customer.firstName} {customer.lastName}
                 </CardTitle>
