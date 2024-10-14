@@ -31,7 +31,7 @@ async function seed() {
       firstName: faker.name.firstName(),
       lastName: faker.name.lastName(),
       dob: faker.date.past(),
-      phoneNo: faker.phone.number(),
+      phoneNo: "0987654213",
       address: faker.address.streetAddress(),
       email: "admin@app.com",
       password: hashedPassword,
@@ -44,7 +44,7 @@ async function seed() {
       firstName: faker.name.firstName(),
       lastName: faker.name.lastName(),
       dob: faker.date.past(),
-      phoneNo: faker.phone.number(),
+      phoneNo: "0712345678",
       address: faker.address.streetAddress(),
       email: "customer@app.com",
       password: hashedPassword,
@@ -57,7 +57,7 @@ async function seed() {
       firstName: faker.name.firstName(),
       lastName: faker.name.lastName(),
       dob: faker.date.past(),
-      phoneNo: faker.phone.number(),
+      phoneNo: "0987612345",
       address: faker.address.streetAddress(),
       email: "editor@app.com",
       password: hashedPassword,
@@ -133,7 +133,7 @@ async function seed() {
     }),
   ]);
 
-  const category = categories[0]; // Use the first category for the existing post
+  const category = categories[0];
 
   // Create a post
   const post = await db.post.create({
