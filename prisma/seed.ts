@@ -69,13 +69,71 @@ async function seed() {
   });
 
   // Create categories
-  const category = await db.categories.create({
-    data: {
-      name: "General Editing",
-      description: "General editing services",
-      image: "https://example.com/general-editing.jpg",
-    },
-  });
+  const categories = await Promise.all([
+    db.categories.create({
+      data: {
+        name: "General Editing",
+        description: "Comprehensive editing services for various types of content",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Academic Editing",
+        description: "Specialized editing for academic papers, theses, and dissertations",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Fiction Editing",
+        description: "Editing services tailored for novels, short stories, and creative writing",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Technical Writing",
+        description: "Editing for technical documents, manuals, and scientific papers",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Business Writing",
+        description:
+          "Editing services for business reports, proposals, and corporate communications",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "ESL Editing",
+        description: "Specialized editing for non-native English speakers",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Proofreading",
+        description: "Final review for grammar, spelling, and punctuation errors",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Content Writing",
+        description: "Editing and refinement of web content, blogs, and articles",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Legal Document Editing",
+        description: "Specialized editing for legal documents and contracts",
+      },
+    }),
+    db.categories.create({
+      data: {
+        name: "Manuscript Evaluation",
+        description: "In-depth analysis and feedback on manuscript structure and content",
+      },
+    }),
+  ]);
+
+  const category = categories[0]; // Use the first category for the existing post
 
   // Create a post
   const post = await db.post.create({

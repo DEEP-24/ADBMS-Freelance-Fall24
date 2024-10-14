@@ -1,7 +1,10 @@
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import invariant from "tiny-invariant";
 
-invariant(process.env.SESSION_SECRET, "SESSION_SECRET must be set");
+// Use a fallback secret if the environment variable is not set
+const SESSION_SECRET = process.env.SESSION_SECRET || "fallback_secret_key_change_me_in_production";
+
+invariant(SESSION_SECRET, "SESSION_SECRET must be set");
 
 export const sessionStorage = createCookieSessionStorage({
   cookie: {
@@ -9,8 +12,9 @@ export const sessionStorage = createCookieSessionStorage({
     httpOnly: true,
     path: "/",
     sameSite: "lax",
-    secrets: [process.env.SESSION_SECRET],
+    secrets: [SESSION_SECRET],
     secure: process.env.NODE_ENV === "production",
+    maxAge: 60 * 60 * 24 * 30, // 30 days
   },
 });
 
@@ -76,8 +80,8 @@ export async function createUserSession({
     headers: {
       "Set-Cookie": await sessionStorage.commitSession(session, {
         maxAge: remember
-          ? 60 * 60 * 24 * 7 // 7 days
-          : undefined,
+          ? 60 * 60 * 24 * 30 // 30 days
+          : 60 * 60 * 24 * 7, // 7 days (default)
       }),
     },
   });

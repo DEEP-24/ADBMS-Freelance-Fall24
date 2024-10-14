@@ -1,6 +1,7 @@
 import type { ActionFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { useFetcher, useLoaderData } from "@remix-run/react";
+import { Plus } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { db } from "~/lib/db.server";
@@ -20,10 +21,7 @@ import { Textarea } from "~/components/ui/textarea";
 
 export async function loader() {
   const services = await db.categories.findMany({});
-
-  return json({
-    services: services,
-  });
+  return json({ services });
 }
 
 type ActionData = {
@@ -33,6 +31,7 @@ type ActionData = {
     description?: string;
   };
 };
+
 export const action = async ({ request }: ActionFunctionArgs) => {
   const formData = await request.formData();
 
@@ -59,10 +58,8 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
   await db.categories.create({
     data: {
-      name: name,
-      description: description,
-      image:
-        "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNkYzI2MWMiIHN0cm9rZS13aWR0aD0iMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIiBjbGFzcz0ibHVjaWRlIGx1Y2lkZS1icnVzaCI+PHBhdGggZD0ibTkuMDYgMTEuOSA4LjA3LTguMDZhMi44NSAyLjg1IDAgMSAxIDQuMDMgNC4wM2wtOC4wNiA4LjA4Ii8+PHBhdGggZD0iTTcuMDcgMTQuOTRjLTEuNjYgMC0zIDEuMzUtMyAzLjAyIDAgMS4zMy0yLjUgMS41Mi0yIDIuMDIgMS4wOCAxLjEgMi40OSAyLjAyIDQgMi4wMiAyLjIgMCA0LTEuOCA0LTQuMDRhMy4wMSAzLjAxIDAgMCAwLTMtMy4wMnoiLz48L3N2Zz4=",
+      name,
+      description,
     },
   });
 
@@ -93,65 +90,60 @@ export default function ServicesPage() {
   }, [isSubmitting, fetcher.data]);
 
   return (
-    <>
-      <div className="flex-1 bg-background py-24 sm:p-16">
-        <div className="mx-auto max-w-7xl px-6 lg:px-8">
-          <div className="mx-auto max-w-2xl lg:text-center">
-            <div className="flex flex-col items-center justify-center gap-6">
-              <h2 className="text-4xl font-semibold leading-7 text-primary">Services</h2>
-
-              <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="default">Add Service</Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Add Service</DialogTitle>
-                  </DialogHeader>
-                  <fetcher.Form method="post" className="flex flex-col gap-4">
-                    <div>
-                      <Input name="name" placeholder="Name" required />
-                      {fetcher.data?.fieldErrors?.name && (
-                        <p className="text-sm text-destructive mt-1">
-                          {fetcher.data.fieldErrors.name}
-                        </p>
-                      )}
-                    </div>
-                    <div>
-                      <Textarea name="description" placeholder="Description" required />
-                      {fetcher.data?.fieldErrors?.description && (
-                        <p className="text-sm text-destructive mt-1">
-                          {fetcher.data.fieldErrors.description}
-                        </p>
-                      )}
-                    </div>
-                    <Button type="submit" variant="default">
-                      Create
-                    </Button>
-                  </fetcher.Form>
-                </DialogContent>
-              </Dialog>
-            </div>
-          </div>
-          <div className="mx-auto mt-16 max-w-2xl sm:mt-20 lg:mt-24 lg:max-w-none">
-            <div className="grid max-w-xl grid-cols-1 gap-x-8 gap-y-16 lg:max-w-none lg:grid-cols-3">
-              {services.map((service) => (
-                <Card key={service.name} className="hover:scale-105 transition-transform">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-x-2">
-                      <img src={service.image} alt="" className="h-5 w-5" />
-                      {service.name}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-muted-foreground">{service.description}</p>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
-        </div>
+    <div className="w-full mx-auto">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold text-gray-900">Services</h1>
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700 text-white">
+              <Plus className="mr-2 h-4 w-4" /> Add Service
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px]">
+            <DialogHeader>
+              <DialogTitle>Add New Service</DialogTitle>
+            </DialogHeader>
+            <fetcher.Form method="post" className="space-y-4">
+              <div>
+                <Input name="name" placeholder="Service Name" required />
+                {fetcher.data?.fieldErrors?.name && (
+                  <p className="text-sm text-red-500 mt-1">{fetcher.data.fieldErrors.name}</p>
+                )}
+              </div>
+              <div>
+                <Textarea name="description" placeholder="Service Description" required />
+                {fetcher.data?.fieldErrors?.description && (
+                  <p className="text-sm text-red-500 mt-1">
+                    {fetcher.data.fieldErrors.description}
+                  </p>
+                )}
+              </div>
+              <Button
+                type="submit"
+                className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                {isSubmitting ? "Adding..." : "Add Service"}
+              </Button>
+            </fetcher.Form>
+          </DialogContent>
+        </Dialog>
       </div>
-    </>
+
+      <div className="space-y-6 mt-10">
+        {services.map((service) => (
+          <Card
+            key={service.name}
+            className="shadow-sm hover:shadow-md transition-shadow duration-300"
+          >
+            <CardHeader className="pb-2 pt-4 px-4">
+              <CardTitle className="text-lg font-semibold text-gray-800">{service.name}</CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4">
+              <p className="text-sm text-gray-600">{service.description}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
   );
 }
