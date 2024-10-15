@@ -20,6 +20,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 
 import { db } from "~/lib/db.server";
 import { getS3Url, getUniqueS3Key } from "~/lib/s3-utils";
@@ -39,6 +40,14 @@ const createFileEntrySchema = z.object({
   region: z.string().min(1, "File must be selected"),
   postId: z.string().min(1, "postId is required"),
   type: z.string().optional(),
+});
+
+// Add this schema for payment validation
+const paymentSchema = z.object({
+  cardHolderName: z.string().min(1, "Card holder name is required"),
+  cardNumber: z.string().length(16, "Card number must be 16 digits"),
+  cardExpiry: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Invalid expiry date format (MM/YY)"),
+  cardCvv: z.string().length(3, "CVV must be 3 digits"),
 });
 
 export const loader = async ({ params }: LoaderFunctionArgs) => {
@@ -68,14 +77,6 @@ export const loader = async ({ params }: LoaderFunctionArgs) => {
   return json({
     project: project,
   });
-};
-
-export const meta: MetaFunction = () => {
-  return [
-    {
-      title: "Artify | View Project",
-    },
-  ];
 };
 
 interface ActionData {
@@ -132,39 +133,39 @@ export default function ProjectPage() {
   const completeProjectFetcher = useFetcher<CompleteProjectActionData>();
   const paymentFetcher = useFetcher<PaymentActionData>();
 
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
-  const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>(
-    PaymentMethod.CREDIT_CARD,
-  );
   const [isPaymentModalOpen, setIsPaymentModalOpen] = React.useState(false);
   const closePaymentModal = () => setIsPaymentModalOpen(false);
 
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
-  const [cardHolderName, setCardHolderName] = React.useState<string>("");
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
-  const [cardNumber, setCardNumber] = React.useState<string>("1234567891234567");
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
-  const [cardExpiry, setCardExpiry] = React.useState<Date | null>(new Date("2026-12-31"));
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
+  const [cardHolderName, setCardHolderName] = React.useState("");
+  const [cardNumber, setCardNumber] = React.useState("");
+  const [, setCardExpiry] = React.useState<Date | null>();
   const [displayExpiryDate, setDisplayExpiryDate] = React.useState<string>("");
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
-  const [cardCvv, setCardCvv] = React.useState<string>("123");
-  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
-  const [errors, setErrors] = React.useState<{
-    cardHolderName?: string;
-    cardNumber?: string;
-    cardExpiry?: string;
-    cardCvv?: string;
-  }>({
-    cardHolderName: "",
-    cardNumber: "",
-    cardExpiry: "",
-    cardCvv: "",
-  });
+  const [cardCvv, setCardCvv] = React.useState("");
 
   const [fileName, setFileName] = React.useState("");
   const [fileDescription, setFileDescription] = React.useState("");
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const [errors, setErrors] = React.useState<z.ZodFormattedError<
+    z.infer<typeof paymentSchema>
+  > | null>(null);
+
+  const validatePaymentForm = () => {
+    const result = paymentSchema.safeParse({
+      cardHolderName,
+      cardNumber,
+      cardExpiry: displayExpiryDate,
+      cardCvv,
+    });
+
+    if (!result.success) {
+      setErrors(result.error.format());
+      return false;
+    }
+
+    setErrors(null);
+    return true;
+  };
 
   const completeProject = () => {
     const formData = new FormData();
@@ -175,49 +176,83 @@ export default function ProjectPage() {
     });
   };
 
+  const handleExpiryDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value.replace(/\D/g, "");
+    if (input.length > 4) {
+      input = input.slice(0, 4);
+    }
+
+    let formattedValue = "";
+    if (input.length > 0) {
+      let month = input.slice(0, 2);
+      if (month.length === 1 && Number.parseInt(month) > 1) {
+        month = `0${month}`;
+      }
+      formattedValue = month;
+      if (input.length > 2) {
+        formattedValue += `/${input.slice(2)}`;
+      }
+    }
+
+    setDisplayExpiryDate(formattedValue);
+
+    let newDateValue: Date | null = null;
+
+    // Parse the input into a Date object
+    if (input.length === 4) {
+      const month = Number.parseInt(input.slice(0, 2)) - 1; // JS months are 0-indexed
+      const year = Number.parseInt(`20${input.slice(2)}`);
+      const date = new Date(year, month);
+
+      // Validate the date
+      if (date.getMonth() === month && date.getFullYear() === year) {
+        newDateValue = date;
+      }
+    }
+
+    setCardExpiry(newDateValue);
+  };
+
   const makePayment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    const formData = new FormData();
-
-    const errors = {
-      cardHolderName: "",
-      cardNumber: "",
-      cardExpiry: "",
-      cardCvv: "",
-    };
-    setErrors(errors);
-    if (!cardHolderName) {
-      errors.cardHolderName = "Card holder name is required";
-    }
-
-    if (cardNumber.replace(/[_ ]/g, "").length !== 16) {
-      errors.cardNumber = "Card number must be 16 digits";
-    }
-
-    if (!cardExpiry) {
-      errors.cardExpiry = "Card expiry date is required";
-    }
-
-    if (cardCvv.replace(/[_ ]/g, "").length !== 3) {
-      errors.cardCvv = "Card CVV must be 3 digits";
-    }
-
-    if (Object.values(errors).some((error) => error !== "")) {
-      setErrors(errors);
+    if (!validatePaymentForm()) {
       return;
     }
 
-    formData.append("paymentMethod", paymentMethod);
+    const formData = new FormData();
+    formData.append("paymentMethod", PaymentMethod.CREDIT_CARD);
     formData.append("amount", project.post.bids[0].price.toString());
     formData.append("projectId", project.id);
     formData.append("customerId", project.customerId);
     formData.append("editorId", project.editorId);
+    formData.append("cardHolderName", cardHolderName);
+    formData.append("cardNumber", cardNumber);
+    formData.append("cardExpiry", displayExpiryDate);
+    formData.append("cardCvv", cardCvv);
 
     paymentFetcher.submit(formData, {
       method: "POST",
       action: "/api/payment",
     });
   };
+
+  const isPaymentSubmitting = paymentFetcher.state !== "idle";
+
+  React.useEffect(() => {
+    if (isPaymentSubmitting) {
+      return;
+    }
+    if (!paymentFetcher.data) {
+      return;
+    }
+
+    if (paymentFetcher.data.success) {
+      closePaymentModal();
+      toast.success("Payment completed!");
+    } else {
+      toast.error("Payment failed. Please try again.");
+    }
+  }, [isPaymentSubmitting, paymentFetcher.data]);
 
   const handleFileUpload = React.useCallback(
     async (file: File) => {
@@ -293,23 +328,6 @@ export default function ProjectPage() {
     }
   }, [completeProjectFetcher.data, completeProjectFetcher, isCompletingProject]);
 
-  const isPaymentSubmitting = paymentFetcher.state !== "idle";
-  React.useEffect(() => {
-    if (isPaymentSubmitting) {
-      return;
-    }
-    if (!paymentFetcher.data) {
-      return;
-    }
-
-    if (paymentFetcher.data.success) {
-      closePaymentModal();
-      toast.success("Payment completed!");
-    } else {
-      toast.error("Something went wrong");
-    }
-  }, [isPaymentSubmitting, paymentFetcher, paymentFetcher.data]);
-
   return (
     <div className="container mx-auto p-6 bg-gray-50">
       <header className="mb-8">
@@ -350,61 +368,99 @@ export default function ProjectPage() {
                 <p className="text-2xl font-bold text-green-600">${project.post.budget}</p>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-700">Your Price</h3>
+                <h3 className="font-semibold text-gray-700">Editor Price</h3>
                 <p className="text-2xl font-bold text-blue-600">${project.post.bids[0].price}</p>
               </div>
             </div>
           </CardContent>
           <CardFooter>
-            {project.status === ProjectStatus.in_progress ? (
-              <Button
-                onClick={() => completeProject()}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                Mark as Done
-              </Button>
-            ) : project.status === ProjectStatus.payment_pending && !project.payment ? (
-              <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="default"
-                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                  >
-                    Make Payment
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="bg-white">
-                  <DialogHeader>
-                    <DialogTitle className="text-emerald-800">Payment</DialogTitle>
-                  </DialogHeader>
-                  <fetcher.Form onSubmit={makePayment} className="space-y-4">
-                    {/* Keep the existing form fields */}
-                    <div className="flex justify-end gap-4">
-                      <Button
-                        variant="outline"
-                        onClick={closePaymentModal}
-                        className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
-                      >
-                        Cancel
-                      </Button>
-                      <Button
-                        type="submit"
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
-                      >
-                        Make Payment
-                      </Button>
-                    </div>
-                  </fetcher.Form>
-                </DialogContent>
-              </Dialog>
-            ) : (
-              <div className="flex gap-2">
-                <Badge variant="default" className="bg-emerald-100 text-emerald-800">
-                  Payment Done
-                </Badge>
-                <Badge variant="default" className="bg-emerald-100 text-emerald-800">
-                  Project Completed
-                </Badge>
+            {project.status === ProjectStatus.in_progress && (
+              <div className="flex gap-4">
+                <Button
+                  onClick={() => completeProject()}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={isCompletingProject}
+                >
+                  {isCompletingProject ? (
+                    <>
+                      <span className="animate-spin mr-2">&#9696;</span>
+                      Completing...
+                    </>
+                  ) : (
+                    "Complete Project"
+                  )}
+                </Button>
+                <Button
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  disabled={true} // Always disabled when project is in progress
+                >
+                  Make Payment
+                </Button>
+              </div>
+            )}
+            {project.status === ProjectStatus.payment_pending && (
+              <div className="flex gap-4">
+                <Button className="bg-emerald-600 hover:bg-emerald-700 text-white" disabled>
+                  Complete Project
+                </Button>
+                <Button
+                  onClick={() => setIsPaymentModalOpen(true)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  disabled={isCompletingProject}
+                >
+                  Make Payment
+                </Button>
+              </div>
+            )}
+            {project.status === ProjectStatus.completed && (
+              <div className="mt-4 flex items-center justify-between bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-8 w-8 text-green-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Project Completed</h3>
+                    <p className="text-sm text-gray-500">
+                      Great job! This project has been successfully completed.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center space-x-3">
+                  <div className="flex-shrink-0">
+                    <svg
+                      className="h-8 w-8 text-blue-500"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"
+                      />
+                    </svg>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900">Payment Processed</h3>
+                    <p className="text-sm text-gray-500">
+                      The payment for this project has been successfully processed.
+                    </p>
+                  </div>
+                </div>
               </div>
             )}
           </CardFooter>
@@ -513,6 +569,96 @@ export default function ProjectPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+        <DialogContent className="bg-white">
+          <DialogHeader>
+            <DialogTitle className="text-emerald-800">Payment Details</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={makePayment} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="cardHolderName">Card Holder Name</Label>
+              <Input
+                id="cardHolderName"
+                value={cardHolderName}
+                onChange={(e) => setCardHolderName(e.target.value)}
+                required
+              />
+              {errors?.cardHolderName && (
+                <p className="text-sm text-red-500">{errors.cardHolderName._errors.join(", ")}</p>
+              )}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="cardNumber">Card Number</Label>
+              <Input
+                id="cardNumber"
+                value={cardNumber}
+                onChange={(e) => setCardNumber(e.target.value)}
+                required
+                maxLength={16}
+                placeholder="1234 5678 9012 3456"
+              />
+              {errors?.cardNumber && (
+                <p className="text-sm text-red-500">{errors.cardNumber._errors.join(", ")}</p>
+              )}
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid w-full max-w-sm items-center gap-1.5">
+                <Label htmlFor="expiryDate">Expiry Date</Label>
+                <Input
+                  type="text"
+                  value={displayExpiryDate}
+                  onChange={handleExpiryDateChange}
+                  placeholder="MM/YY"
+                  maxLength={5}
+                />
+                {errors?.cardExpiry && (
+                  <p className="text-sm text-red-500">{errors.cardExpiry._errors.join(", ")}</p>
+                )}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cardCvv">CVV</Label>
+                <Input
+                  id="cardCvv"
+                  value={cardCvv}
+                  onChange={(e) => setCardCvv(e.target.value)}
+                  required
+                  maxLength={3}
+                  placeholder="123"
+                />
+                {errors?.cardCvv && (
+                  <p className="text-sm text-red-500">{errors.cardCvv._errors.join(", ")}</p>
+                )}
+              </div>
+            </div>
+            <div className="flex justify-end gap-4 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setIsPaymentModalOpen(false)}
+                className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                disabled={isPaymentSubmitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                disabled={isPaymentSubmitting}
+              >
+                {isPaymentSubmitting ? (
+                  <>
+                    <span className="animate-spin mr-2">&#9696;</span>
+                    Processing...
+                  </>
+                ) : (
+                  `Pay $${project.post.bids[0].price}`
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
