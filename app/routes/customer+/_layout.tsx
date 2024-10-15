@@ -13,7 +13,7 @@ import {
 } from "~/components/ui/dropdown-menu";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { getCustomerById } from "~/lib/customer.server";
-import { getUserId, getUserRole } from "~/lib/session.server";
+import { getUser, getUserRole } from "~/lib/session.server";
 import { UserRole } from "~/roles";
 
 export const customerActions = [
@@ -23,15 +23,15 @@ export const customerActions = [
 ];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const userId = await getUserId(request);
-  const userRole = await getUserRole(request);
+  const currentUser = await getUser(request);
+  const currentUserRole = await getUserRole(request);
 
-  if (!userId || !userRole) {
+  if (!currentUser) {
     return redirect("/login");
   }
 
-  if (userRole !== UserRole.CUSTOMER) {
-    switch (userRole) {
+  if (currentUserRole !== UserRole.CUSTOMER) {
+    switch (currentUserRole) {
       case UserRole.ADMIN:
         return redirect("/admin");
       case UserRole.EDITOR:
@@ -41,12 +41,12 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
-  const user = await getCustomerById(userId);
+  const user = await getCustomerById(currentUser.id);
   if (!user) {
     return redirect("/login");
   }
 
-  return json({ user, userRole });
+  return json({ user });
 };
 
 export default function CustomerLayout() {

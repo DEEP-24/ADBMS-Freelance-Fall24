@@ -8,21 +8,25 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { db } from "~/lib/db.server";
-import { requireUserId } from "~/lib/session.server";
+import { getUser } from "~/lib/session.server";
 import { formatDate } from "~/utils/misc";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await requireUserId(request);
+  const user = await getUser(request);
 
   const posts = await db.post.findMany({
     where: {
-      customerId: userId,
+      customerId: user?.id,
     },
     orderBy: {
       createdAt: "desc",
     },
     include: {
-      project: true,
+      project: {
+        select: {
+          id: true,
+        },
+      },
       customer: true,
       category: true,
       bids: true,
@@ -95,29 +99,35 @@ export default function CustomerPosts() {
                       <Separator />
                       <div className="pt-2">
                         <p className="text-sm font-medium mb-2">Project Details</p>
-                        <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
-                          <span className="text-sm font-medium text-gray-600">Editor Charges</span>
-                          <span className="font-semibold text-green-600">
-                            {new Intl.NumberFormat("en-US", {
-                              style: "currency",
-                              currency: "USD",
-                            }).format(post.bids.find((bid) => bid.approved)?.price ?? 0)}
-                          </span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <span className="text-sm text-gray-600 block">Status</span>
+                            <Badge variant="default">{post.status}</Badge>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <span className="text-sm text-gray-600 block">Editor Charges</span>
+                            <span className="font-semibold text-green-600">
+                              {new Intl.NumberFormat("en-US", {
+                                style: "currency",
+                                currency: "USD",
+                              }).format(post.bids.find((bid) => bid.approved)?.price ?? 0)}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </>
                   )}
                   <div className="mt-4">
-                    {post.status !== PostStatus.open && post.bids.length > 0 ? (
+                    {post.project ? (
                       <Button
                         variant="default"
                         size="sm"
                         asChild
                         className="bg-emerald-500 hover:bg-emerald-600"
                       >
-                        <Link to={`/customer/projects/${post.project?.[0].id}`}>View Project</Link>
+                        <Link to={`/customer/projects/${post.project[0].id}`}>View Project</Link>
                       </Button>
-                    ) : (
+                    ) : post.status === PostStatus.open ? (
                       <Button
                         variant="default"
                         asChild
@@ -125,7 +135,7 @@ export default function CustomerPosts() {
                       >
                         <Link to={`/customer/posts/${post.id}`}>View bids</Link>
                       </Button>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </CardContent>

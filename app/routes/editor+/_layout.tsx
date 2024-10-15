@@ -12,8 +12,7 @@ import {
   DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu";
 import { ScrollArea } from "~/components/ui/scroll-area";
-import { getEditorById } from "~/lib/editor.server";
-import { getUserId, getUserRole } from "~/lib/session.server";
+import { getUser, getUserRole } from "~/lib/session.server";
 import { UserRole } from "~/roles";
 
 export const editorActions = [
@@ -22,15 +21,15 @@ export const editorActions = [
 ];
 
 export const loader = async ({ request }: LoaderFunctionArgs) => {
-  const userId = await getUserId(request);
-  const userRole = await getUserRole(request);
+  const currentUser = await getUser(request);
+  const currentUserRole = await getUserRole(request);
 
-  if (!userId || !userRole) {
+  if (!currentUser || !currentUserRole) {
     return redirect("/login");
   }
 
-  if (userRole !== UserRole.EDITOR) {
-    switch (userRole) {
+  if (currentUserRole !== UserRole.EDITOR) {
+    switch (currentUserRole) {
       case UserRole.CUSTOMER:
         return redirect("/customer");
       case UserRole.ADMIN:
@@ -40,12 +39,11 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     }
   }
 
-  const user = await getEditorById(userId);
-  if (!user) {
+  if (!currentUser) {
     return redirect("/login");
   }
 
-  return json({ user, userRole });
+  return json({ user: currentUser });
 };
 
 export default function EditorLayout() {

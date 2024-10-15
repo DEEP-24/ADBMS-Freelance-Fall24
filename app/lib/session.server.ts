@@ -1,5 +1,9 @@
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import invariant from "tiny-invariant";
+import { getAdminById } from "~/lib/admin.server";
+import { getCustomerById } from "~/lib/customer.server";
+import { getEditorById } from "~/lib/editor.server";
+import { UserRole } from "~/roles";
 
 const SESSION_SECRET = process.env.SESSION_SECRET;
 
@@ -38,13 +42,26 @@ export async function getUserRole(request: Request): Promise<string | undefined>
   return role;
 }
 
+// get the user from the database with the userId
 export async function getUser(request: Request) {
   const userId = await getUserId(request);
   if (userId === undefined) {
     return null;
   }
 
-  return { id: userId };
+  const userRole = await getUserRole(request);
+
+  if (userRole === UserRole.CUSTOMER) {
+    return await getCustomerById(userId);
+  }
+  if (userRole === UserRole.ADMIN) {
+    return await getAdminById(userId);
+  }
+  if (userRole === UserRole.EDITOR) {
+    return await getEditorById(userId);
+  }
+
+  return null;
 }
 
 export async function requireUserId(
