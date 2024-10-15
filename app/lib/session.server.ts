@@ -1,8 +1,7 @@
 import { createCookieSessionStorage, redirect } from "@remix-run/node";
 import invariant from "tiny-invariant";
 
-// Use a fallback secret if the environment variable is not set
-const SESSION_SECRET = process.env.SESSION_SECRET || "fallback_secret_key_change_me_in_production";
+const SESSION_SECRET = process.env.SESSION_SECRET;
 
 invariant(SESSION_SECRET, "SESSION_SECRET must be set");
 
@@ -14,7 +13,7 @@ export const sessionStorage = createCookieSessionStorage({
     sameSite: "lax",
     secrets: [SESSION_SECRET],
     secure: process.env.NODE_ENV === "production",
-    maxAge: 60 * 60 * 24 * 30, // 30 days
+    maxAge: 60 * 60 * 24 * 30,
   },
 });
 
@@ -29,7 +28,14 @@ export async function getSession(request: Request) {
 export async function getUserId(request: Request): Promise<string | undefined> {
   const session = await getSession(request);
   const userId = session.get(USER_SESSION_KEY);
+
   return userId;
+}
+
+export async function getUserRole(request: Request): Promise<string | undefined> {
+  const session = await getSession(request);
+  const role = session.get(USER_ROLE_KEY);
+  return role;
 }
 
 export async function getUser(request: Request) {
@@ -38,8 +44,6 @@ export async function getUser(request: Request) {
     return null;
   }
 
-  // Instead of fetching the user from the database, we'll just return the userId
-  // You may want to implement a proper user fetching mechanism later
   return { id: userId };
 }
 
@@ -53,11 +57,6 @@ export async function requireUserId(
     throw redirect(`/login?${searchParams}`);
   }
   return userId;
-}
-
-export async function requireUser(request: Request) {
-  const userId = await requireUserId(request);
-  return { id: userId };
 }
 
 export async function createUserSession({
@@ -89,15 +88,13 @@ export async function createUserSession({
 
 export async function logout(request: Request) {
   const session = await getSession(request);
+
+  session.unset(USER_SESSION_KEY);
+  session.unset(USER_ROLE_KEY);
+
   return redirect("/", {
     headers: {
       "Set-Cookie": await sessionStorage.destroySession(session),
     },
   });
-}
-
-export async function getUserRole(request: Request): Promise<string | undefined> {
-  const session = await getSession(request);
-  const role = session.get(USER_ROLE_KEY);
-  return role;
 }

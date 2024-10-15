@@ -1,7 +1,6 @@
 import { type LoaderFunctionArgs, json, redirect } from "@remix-run/node";
 import { Form, Link, NavLink, Outlet, useLoaderData } from "@remix-run/react";
-import { FileText, LogOut, MenuSquareIcon, Settings, ShoppingBag, Users } from "lucide-react";
-import React from "react";
+import { FileText, LogOut, Settings, ShoppingBag, Users } from "lucide-react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Button } from "~/components/ui/button";
 import {

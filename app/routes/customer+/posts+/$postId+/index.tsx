@@ -249,7 +249,7 @@ export default function ViewPost() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {bids.map((bid) => {
                   const isApprovedBid = approvedBid && bid.id === approvedBid.id;
                   const isDeclinedBid = declinedBid && bid.id === declinedBid.id;
@@ -320,7 +320,19 @@ export default function ViewPost() {
                                 <b>Experience:</b> {bid.editor.experience}
                               </p>
                               <p className="text-sm text-black">
-                                <b>Portfolio:</b> {bid.editor.portfolio}
+                                <b>Portfolio:</b>{" "}
+                                {bid.editor.portfolio ? (
+                                  <a
+                                    href={bid.editor.portfolio}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-emerald-600 hover:text-emerald-700 underline"
+                                  >
+                                    View Portfolio
+                                  </a>
+                                ) : (
+                                  "Not available"
+                                )}
                               </p>
                               <p className="text-sm text-black">
                                 <b>Awards:</b> {bid.editor.awards}

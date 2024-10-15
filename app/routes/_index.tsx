@@ -1,10 +1,13 @@
 import type { LoaderFunction, LoaderFunctionArgs } from "@remix-run/node";
 import { redirect } from "@remix-run/node";
-import { getUserRole, requireUserId } from "~/lib/session.server";
+import { getUserId, getUserRole } from "~/lib/session.server";
 import { UserRole } from "~/roles";
 
 export const loader: LoaderFunction = async ({ request }: LoaderFunctionArgs) => {
-  await requireUserId(request);
+  const userId = await getUserId(request);
+  if (!userId) {
+    return redirect("/login");
+  }
 
   const userRole = await getUserRole(request);
   if (userRole === UserRole.ADMIN) {
