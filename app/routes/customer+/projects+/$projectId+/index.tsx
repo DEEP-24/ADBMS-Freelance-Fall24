@@ -1,15 +1,18 @@
 import { PaymentMethod, ProjectStatus } from "@prisma/client";
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
-import { useFetcher, useLoaderData } from "@remix-run/react";
+import { Link, useFetcher, useLoaderData } from "@remix-run/react";
 import axios from "axios";
-import { FileIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, DollarSignIcon, FileIcon, FolderIcon } from "lucide-react";
 import * as mime from "mime-types";
 import * as React from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+
+import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Calendar } from "~/components/ui/calendar";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -28,6 +31,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Separator } from "~/components/ui/separator";
+
 import { db } from "~/lib/db.server";
 import { getS3Url, getUniqueS3Key } from "~/lib/s3-utils";
 import { requireUserId } from "~/lib/session.server";
@@ -48,7 +52,7 @@ const createFileEntrySchema = z.object({
   type: z.string().optional(),
 });
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export const loader = async ({ params }: LoaderFunctionArgs) => {
   const project = await db.project.findUnique({
     where: {
       id: params.projectId,
@@ -75,7 +79,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
   return json({
     project: project,
   });
-}
+};
 
 export const meta: MetaFunction = () => {
   return [
@@ -149,6 +153,8 @@ export default function ProjectPage() {
   const [cardHolderName, setCardHolderName] = React.useState<string>("");
   const [cardNumber, setCardNumber] = React.useState<string>("1234567891234567");
   const [cardExpiry, setCardExpiry] = React.useState<Date | null>(new Date("2026-12-31"));
+  const [displayExpiryDate, setDisplayExpiryDate] = React.useState<string>("");
+
   const [cardCvv, setCardCvv] = React.useState<string>("123");
   const [errors, setErrors] = React.useState<{
     cardHolderName?: string;
@@ -162,16 +168,52 @@ export default function ProjectPage() {
     cardCvv: "",
   });
 
+  const handleExpiryDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let input = e.target.value.replace(/\D/g, "");
+    if (input.length > 4) {
+      input = input.slice(0, 4);
+    }
+
+    let formattedValue = "";
+    if (input.length > 0) {
+      let month = input.slice(0, 2);
+      if (month.length === 1 && Number.parseInt(month) > 1) {
+        month = `0${month}`;
+      }
+      formattedValue = month;
+      if (input.length > 2) {
+        formattedValue += `/${input.slice(2)}`;
+      }
+    }
+
+    setDisplayExpiryDate(formattedValue);
+
+    let newDateValue: Date | null = null;
+
+    // Parse the input into a Date object
+    if (input.length === 4) {
+      const month = Number.parseInt(input.slice(0, 2)) - 1; // JS months are 0-indexed
+      const year = Number.parseInt(`20${input.slice(2)}`);
+      const date = new Date(year, month);
+
+      // Validate the date
+      if (date.getMonth() === month && date.getFullYear() === year) {
+        newDateValue = date;
+      }
+    }
+
+    setCardExpiry(newDateValue);
+  };
+
   const completeProject = () => {
     const formData = new FormData();
-
     formData.append("projectId", project.id);
-
     completeProjectFetcher.submit(formData, {
       method: "POST",
       action: "/api/completeProject",
     });
   };
+
   const makePayment = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData();
@@ -245,13 +287,10 @@ export default function ProjectPage() {
       console.log(url);
       toast.success("Document uploaded successfully");
     } else {
-      // TODO: Delete the created document from the database
-      // Use `useSubmit()` to do this
       toast.error("Error uploading document");
     }
 
     setIsFileUploading(false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file, uploadedDocumentKey]);
 
   React.useEffect(() => {
@@ -304,253 +343,215 @@ export default function ProjectPage() {
   }, [isPaymentSubmitting, paymentFetcher, paymentFetcher.data]);
 
   return (
-    <div>
-      <div className="bg-black p-10">
-        <div className="px-4">
-          <h3 className="text-xl font-semibold leading-7 text-white">Project Information</h3>
-        </div>
-        <div className="mt-6 border-t border-white/10">
-          <dl className="divide-y divide-white/10">
-            <div className="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Title</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                {project.post.title}
-              </dd>
-            </div>
-            <div className="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Category</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                {project.post.category.name}
-              </dd>
-            </div>
-            <div className="px-2 py-3 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Description</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                {project.post.description}
-              </dd>
-            </div>
-            <div className="px-2 py-3  sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Posted By</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                {project.customer.firstName} {project.customer.lastName}
-              </dd>
-            </div>
-            <div className="px-2 py-3  sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Budget</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                ${project.post.bids[0].price}
-              </dd>
-            </div>
-            <div className="px-2 py-3  sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Deadline</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                {formatDate(project.post.deadline)}
-              </dd>
-            </div>
-            <div className="px-2 py-3  sm:grid sm:grid-cols-3 sm:gap-4 sm:px-0">
-              <dt className="text-sm font-medium leading-6 text-white">Editor</dt>
-              <dd className="mt-1 text-sm leading-6 text-gray-400 sm:col-span-2 sm:mt-0">
-                {project.editor.firstName} {project.editor.lastName}
-              </dd>
-            </div>
-          </dl>
-        </div>
+    <div className="container mx-auto p-6">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-emerald-800">Project Details</h1>
+        <Link to="/customer/projects">
+          <Button variant="outline" className="flex items-center gap-2">
+            <ArrowLeftIcon className="w-4 h-4" />
+            Back to Projects
+          </Button>
+        </Link>
       </div>
-      <div className="ml-4 flex flex-col gap-2">
-        <div>
+
+      <Card className="mb-8 border-emerald-200">
+        <CardHeader className="bg-emerald-50">
+          <CardTitle className="text-2xl text-emerald-800">{project.post.title}</CardTitle>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div className="flex items-center">
+              <CalendarIcon className="mr-2 h-4 w-4 text-emerald-600" />
+              <span className="text-emerald-800">Due on {formatDate(project.post.deadline)}</span>
+            </div>
+            <div className="flex items-center">
+              <FolderIcon className="mr-2 h-4 w-4 text-emerald-600" />
+              <span className="text-emerald-800">{project.post.category.name}</span>
+            </div>
+            <div className="flex items-center">
+              <DollarSignIcon className="mr-2 h-4 w-4 text-emerald-600" />
+              <span className="text-emerald-800">Budget: ${project.post.bids[0].price}</span>
+            </div>
+            <div className="flex items-center">
+              <span className="font-semibold mr-2 text-emerald-800">Status:</span>
+              <Badge variant={project.status === ProjectStatus.completed ? "default" : "default"}>
+                {titleCase(project.status)}
+              </Badge>
+            </div>
+          </div>
+          <Separator className="my-4" />
+          <p className="text-emerald-800">{project.post.description}</p>
+        </CardContent>
+        <CardFooter className="bg-emerald-50">
           {project.status === ProjectStatus.in_progress ? (
-            <div>
-              <Button
-                type="submit"
-                variant="default"
-                size="sm"
-                onClick={() => {
-                  completeProject();
-                }}
-              >
-                Done
-              </Button>
-            </div>
+            <Button
+              onClick={() => completeProject()}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              Mark as Done
+            </Button>
           ) : project.status === ProjectStatus.payment_pending && !project.payment ? (
-            <div>
-              <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="destructive" className="w-full">
-                    Make Payment
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Payment</DialogTitle>
-                  </DialogHeader>
-                  <div className="flex flex-col gap-4">
-                    <div className="flex flex-col gap-2">
-                      <h2 className="text-sm text-gray-600">
-                        <span className="font-semibold">Amount: </span>
-                        <span>${project.post.bids[0].price}</span>
-                      </h2>
-                    </div>
-
-                    <Form onSubmit={makePayment}>
-                      <div className="space-y-4">
-                        <div>
-                          <Label htmlFor="cardHolderName">Card holder name</Label>
-                          <Input
-                            id="cardHolderName"
-                            value={cardHolderName}
-                            onChange={(e) => setCardHolderName(e.target.value)}
-                            required
-                          />
-                        </div>
-
-                        <div>
-                          <Label htmlFor="paymentMethod">Payment method</Label>
-                          <Select
-                            value={paymentMethod}
-                            onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select payment method" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.values(PaymentMethod).map((method) => (
-                                <SelectItem key={method} value={method}>
-                                  {titleCase(method)}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        <div>
-                          <Label htmlFor="cardNumber">Card number</Label>
-                          <Input
-                            id="cardNumber"
-                            placeholder="XXXX XXXX XXXX XXXX"
-                            value={cardNumber}
-                            onChange={(e) => setCardNumber(e.target.value)}
-                            required
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <Label htmlFor="cvv">CVV</Label>
-                            <Input
-                              id="cvv"
-                              placeholder="XXX"
-                              value={cardCvv}
-                              onChange={(e) => setCardCvv(e.target.value)}
-                              required
-                            />
-                          </div>
-
-                          <div>
-                            <Label htmlFor="expiry">Expiry</Label>
-                            <Calendar
-                              mode="single"
-                              selected={cardExpiry}
-                              onSelect={(date) => setCardExpiry(date)}
-                              disabled={(date) => date < new Date()}
-                              initialFocus
-                            />
-                          </div>
-                        </div>
-
-                        {Object.values(errors).some((error) => error !== "") ? (
-                          <div className="flex flex-col gap-2">
-                            {Object.entries(errors).map(([key, value]) => (
-                              <p key={key} className="text-red-500">
-                                {value}
-                              </p>
-                            ))}
-                          </div>
-                        ) : null}
-
-                        <div className="mt-6 flex items-center gap-4 sm:justify-end">
-                          <Button variant="outline" onClick={closePaymentModal}>
-                            Cancel
-                          </Button>
-                          <Button type="submit">Make Payment</Button>
-                        </div>
-                      </div>
-                    </Form>
+            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+              <DialogTrigger asChild>
+                <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700">
+                  Make Payment
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Payment</DialogTitle>
+                </DialogHeader>
+                <fetcher.Form onSubmit={makePayment} className="space-y-4">
+                  <div>
+                    <Label htmlFor="cardHolderName">Card holder name</Label>
+                    <Input
+                      id="cardHolderName"
+                      value={cardHolderName}
+                      onChange={(e) => setCardHolderName(e.target.value)}
+                      required
+                    />
                   </div>
-                </DialogContent>
-              </Dialog>
-            </div>
+                  <div>
+                    <Label htmlFor="paymentMethod">Payment method</Label>
+                    <Select
+                      value={paymentMethod}
+                      onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select payment method" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.values(PaymentMethod).map((method) => (
+                          <SelectItem key={method} value={method}>
+                            {titleCase(method)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label htmlFor="cardNumber">Card number</Label>
+                    <Input
+                      id="cardNumber"
+                      placeholder="XXXX XXXX XXXX XXXX"
+                      value={cardNumber}
+                      onChange={(e) => setCardNumber(e.target.value)}
+                      required
+                    />
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <Label htmlFor="cvv">CVV</Label>
+                      <Input
+                        id="cvv"
+                        placeholder="XXX"
+                        value={cardCvv}
+                        onChange={(e) => setCardCvv(e.target.value)}
+                        required
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="expiry">Expiry</Label>
+                      <Input
+                        type="text"
+                        value={displayExpiryDate}
+                        onChange={handleExpiryDateChange}
+                        placeholder="MM/YY"
+                        maxLength={5}
+                      />
+                      {errors.cardExpiry && (
+                        <p className="text-sm text-red-500">{errors.cardExpiry}</p>
+                      )}
+                    </div>
+                  </div>
+                  {Object.values(errors).some((error) => error !== "") && (
+                    <div className="text-red-500">
+                      {Object.values(errors).map((error, index) => (
+                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
+                        <p key={index}>{error}</p>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex justify-end gap-4">
+                    <Button variant="outline" onClick={closePaymentModal}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                      Make Payment
+                    </Button>
+                  </div>
+                </fetcher.Form>
+              </DialogContent>
+            </Dialog>
           ) : (
             <div className="flex gap-2">
-              <div className="flex w-52 items-center justify-center rounded-md border border-black bg-green-500 p-2">
-                <span className="text-semibold text-white">Payment Done</span>
-              </div>
-              <div className="flex w-52 items-center justify-center rounded-md border border-black bg-green-500 p-2">
-                <span className="text-semibold text-white">Project Completed</span>
-              </div>
+              <Badge variant="default">Payment Done</Badge>
+              <Badge variant="default">Project Completed</Badge>
             </div>
           )}
-        </div>
-      </div>
-      <div className="grid grid-cols-3 gap-2 p-6">
-        <div className="p-2">
-          <p className="text-xl text-white">Your Files</p>
-          <Separator className="my-4" />
-          <div className="space-y-3">
+        </CardFooter>
+      </Card>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="border-emerald-200">
+          <CardHeader className="bg-emerald-50">
+            <CardTitle className="text-emerald-800">Your Files</CardTitle>
+          </CardHeader>
+          <CardContent>
             {project.customerDocuments && project.customerDocuments.length > 0 ? (
               project.customerDocuments.map((document) => (
-                <div
-                  key={document.id}
-                  className="flex w-56 flex-col rounded-md border p-2 text-white"
-                >
-                  <a href={document.imageUrl} className="flex items-center gap-3" download>
-                    <FileIcon className="h-9 w-9" />
+                <div key={document.id} className="flex items-center mb-2">
+                  <FileIcon className="mr-2 h-4 w-4 text-emerald-600" />
+                  <a
+                    href={document.imageUrl}
+                    download
+                    className="text-emerald-600 hover:text-emerald-800 hover:underline"
+                  >
                     {document.name}.{document.extension}
                   </a>
                 </div>
               ))
             ) : (
-              <div className="p-2">
-                <p className="text-white">No documents available</p>
-              </div>
+              <p className="text-emerald-800">No documents available</p>
             )}
-          </div>
-        </div>
-        <div className="p-2">
-          <p className="text-xl text-white">Editor Files</p>
-          <Separator className="my-4" />
-          <div className="space-y-3">
+          </CardContent>
+        </Card>
+
+        <Card className="border-emerald-200">
+          <CardHeader className="bg-emerald-50">
+            <CardTitle className="text-emerald-800">Editor Files</CardTitle>
+          </CardHeader>
+          <CardContent>
             {project.editorDocuments && project.editorDocuments.length > 0 ? (
               project.editorDocuments.map((document) => (
-                <div
-                  key={document.id}
-                  className="flex w-56 flex-col rounded-md border p-2 text-white"
-                >
-                  <a href={getS3Url(document.key)} className="flex items-center gap-3" download>
-                    <FileIcon className="h-9 w-9" />
+                <div key={document.id} className="flex items-center mb-2">
+                  <FileIcon className="mr-2 h-4 w-4 text-emerald-600" />
+                  <a
+                    href={getS3Url(document.key)}
+                    download
+                    className="text-emerald-600 hover:text-emerald-800 hover:underline"
+                  >
                     {document.name}.{document.extension}
                   </a>
                 </div>
               ))
             ) : (
-              <div className="p-2">
-                <p className="text-white">No documents available</p>
-              </div>
+              <p className="text-emerald-800">No documents available</p>
             )}
-          </div>
-        </div>
+          </CardContent>
+        </Card>
+
         {!isProjectCompleted && (
-          <div className="rounded-md border border-white bg-gray-950 p-4 relative">
-            {isFileUploading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 z-10">
-                <div className="flex flex-col items-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white" />
-                  <p className="mt-2 text-white">Uploading file...</p>
+          <Card className="border-emerald-200">
+            <CardHeader className="bg-emerald-50">
+              <CardTitle className="text-emerald-800">Upload a File</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isFileUploading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-emerald-800 bg-opacity-50 z-10">
+                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
                 </div>
-              </div>
-            )}
-            <h1 className="text-xl text-white">Upload a file</h1>
-            <Separator className="my-4" />
-            <div className="flex flex-col">
+              )}
               <fetcher.Form
                 onSubmit={async (e) => {
                   e.preventDefault();
@@ -563,54 +564,38 @@ export default function ProjectPage() {
                   formData.append("key", uploadedDocumentKey);
                   formData.append("extension", extension || "");
                   formData.append("region", window.ENV.AWS_REGION);
-                  console.log(JSON.stringify(Object.fromEntries(formData.entries())));
                   fetcher.submit(formData, {
                     method: "POST",
                   });
                 }}
-                className="flex flex-col gap-4"
+                className="space-y-4"
               >
                 <input type="hidden" name="postId" value={project.postId} />
                 <div>
                   <Label htmlFor="name">File Name</Label>
-                  <Input
-                    id="name"
-                    name="name"
-                    placeholder="Enter the name of the file"
-                    required
-                    className="text-white"
-                  />
+                  <Input id="name" name="name" required />
                 </div>
                 <div>
                   <Label htmlFor="description">Description</Label>
-                  <Input
-                    id="description"
-                    name="description"
-                    placeholder="Enter the description of the file"
-                    required
-                    className="text-white"
-                  />
-                </div>
-                <div className="flex w-80 flex-col rounded-md border p-4 text-white">
-                  <div>
-                    <input
-                      type="file"
-                      onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)}
-                    />
-                  </div>
+                  <Input id="description" name="description" required />
                 </div>
                 <div>
-                  <Button
-                    disabled={!file || !uploadedDocumentKey}
-                    type="submit"
-                    variant="destructive"
-                  >
-                    Submit
-                  </Button>
+                  <input
+                    type="file"
+                    onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)}
+                    className="w-full"
+                  />
                 </div>
+                <Button
+                  type="submit"
+                  disabled={!file || !uploadedDocumentKey}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  Upload File
+                </Button>
               </fetcher.Form>
-            </div>
-          </div>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>
