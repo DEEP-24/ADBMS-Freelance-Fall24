@@ -1,6 +1,4 @@
-import path from "node:path";
 import invariant from "tiny-invariant";
-import { v4 as uuidv4 } from "uuid";
 
 declare global {
   interface Window {
@@ -12,10 +10,7 @@ declare global {
 }
 
 const REGION = "us-west-2";
-const BUCKET = "s3artifybucket";
-
-// const REGION = "us-west-2";
-// const BUCKET = "remixs3upload";
+const BUCKET = "s3freelance";
 
 invariant(REGION, "Missing AWS_REGION");
 invariant(BUCKET, "Missing AWS_BUCKET");
@@ -24,12 +19,15 @@ invariant(BUCKET, "Missing AWS_BUCKET");
  * Returns a unique filename for S3
  */
 
-export function getUniqueS3Key(originalFilename: string, extension?: string): string {
-  const _extension = extension ? extension : path.extname(originalFilename);
-  const baseName = path.basename(originalFilename, extension);
-  const safeFilename = baseName.replace(/[^a-zA-Z0-9]/g, "_");
-  const uniqueId = uuidv4();
-  return `${safeFilename}_${uniqueId}${_extension}`;
+export function getUniqueS3Key(fileName: string, extension?: string): string {
+  const timestamp = Date.now();
+  const randomString = Math.random().toString(36).substring(2, 8);
+
+  // Use string manipulation instead of path.basename
+  const baseFileName = fileName.split(".").slice(0, -1).join(".");
+  const fileExtension = extension || fileName.split(".").pop() || "";
+
+  return `${baseFileName}-${timestamp}-${randomString}.${fileExtension}`;
 }
 
 interface S3UrlOptions {

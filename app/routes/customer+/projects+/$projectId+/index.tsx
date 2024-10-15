@@ -3,7 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remi
 import { json, redirect } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData } from "@remix-run/react";
 import axios from "axios";
-import { ArrowLeftIcon, CalendarIcon, DollarSignIcon, FileIcon, FolderIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, FileIcon, FolderIcon } from "lucide-react";
 import * as mime from "mime-types";
 import * as React from "react";
 import { toast } from "sonner";
@@ -11,7 +11,6 @@ import { z } from "zod";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
-import { Calendar } from "~/components/ui/calendar";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
 import {
   Dialog,
@@ -20,17 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "~/components/ui/dialog";
-import { Form } from "~/components/ui/form";
 import { Input } from "~/components/ui/input";
-import { Label } from "~/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "~/components/ui/select";
-import { Separator } from "~/components/ui/separator";
 
 import { db } from "~/lib/db.server";
 import { getS3Url, getUniqueS3Key } from "~/lib/s3-utils";
@@ -136,7 +125,6 @@ export const action = async ({ request, params }: ActionFunctionArgs) => {
 export default function ProjectPage() {
   const { project } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<ActionData>();
-  const [file, setFile] = React.useState<File | null>(null);
   const [isFileUploading, setIsFileUploading] = React.useState(false);
 
   const isProjectCompleted = project.status === ProjectStatus.completed;
@@ -144,18 +132,24 @@ export default function ProjectPage() {
   const completeProjectFetcher = useFetcher<CompleteProjectActionData>();
   const paymentFetcher = useFetcher<PaymentActionData>();
 
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [paymentMethod, setPaymentMethod] = React.useState<PaymentMethod>(
     PaymentMethod.CREDIT_CARD,
   );
   const [isPaymentModalOpen, setIsPaymentModalOpen] = React.useState(false);
   const closePaymentModal = () => setIsPaymentModalOpen(false);
 
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [cardHolderName, setCardHolderName] = React.useState<string>("");
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [cardNumber, setCardNumber] = React.useState<string>("1234567891234567");
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [cardExpiry, setCardExpiry] = React.useState<Date | null>(new Date("2026-12-31"));
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [displayExpiryDate, setDisplayExpiryDate] = React.useState<string>("");
-
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [cardCvv, setCardCvv] = React.useState<string>("123");
+  // biome-ignore lint/correctness/noUnusedVariables: <explanation>
   const [errors, setErrors] = React.useState<{
     cardHolderName?: string;
     cardNumber?: string;
@@ -168,42 +162,9 @@ export default function ProjectPage() {
     cardCvv: "",
   });
 
-  const handleExpiryDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    let input = e.target.value.replace(/\D/g, "");
-    if (input.length > 4) {
-      input = input.slice(0, 4);
-    }
-
-    let formattedValue = "";
-    if (input.length > 0) {
-      let month = input.slice(0, 2);
-      if (month.length === 1 && Number.parseInt(month) > 1) {
-        month = `0${month}`;
-      }
-      formattedValue = month;
-      if (input.length > 2) {
-        formattedValue += `/${input.slice(2)}`;
-      }
-    }
-
-    setDisplayExpiryDate(formattedValue);
-
-    let newDateValue: Date | null = null;
-
-    // Parse the input into a Date object
-    if (input.length === 4) {
-      const month = Number.parseInt(input.slice(0, 2)) - 1; // JS months are 0-indexed
-      const year = Number.parseInt(`20${input.slice(2)}`);
-      const date = new Date(year, month);
-
-      // Validate the date
-      if (date.getMonth() === month && date.getFullYear() === year) {
-        newDateValue = date;
-      }
-    }
-
-    setCardExpiry(newDateValue);
-  };
+  const [fileName, setFileName] = React.useState("");
+  const [fileDescription, setFileDescription] = React.useState("");
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const completeProject = () => {
     const formData = new FormData();
@@ -258,40 +219,47 @@ export default function ProjectPage() {
     });
   };
 
-  const uploadedDocumentKey = React.useMemo(() => {
-    if (!file) {
-      return null;
-    }
+  const handleFileUpload = React.useCallback(
+    async (file: File) => {
+      if (!file) {
+        return;
+      }
 
-    const extension = mime.extension(file.type);
-    const key = getUniqueS3Key(file.name, extension ? `.${extension}` : undefined);
+      setIsFileUploading(true);
+      const extension = mime.extension(file.type) || "";
+      const key = getUniqueS3Key(file.name, extension ? `.${extension}` : undefined);
 
-    return key;
-  }, [file]);
+      try {
+        const { data } = await axios.get<{ signedUrl: string }>(`/api/upload-s3-object?key=${key}`);
+        await axios.put(data.signedUrl, file);
 
-  const handleFileUpload = React.useCallback(async () => {
-    if (!file || !uploadedDocumentKey) {
-      return;
-    }
+        const formData = new FormData();
+        formData.append("name", fileName || file.name);
+        formData.append("description", fileDescription || "Uploaded file");
+        formData.append("bucket", window.ENV.AWS_BUCKET || "");
+        formData.append("key", key);
+        formData.append("extension", extension);
+        formData.append("region", window.ENV.AWS_REGION || "");
+        formData.append("postId", project.postId);
 
-    setIsFileUploading(true);
-    const data = await axios.get<{
-      signedUrl: string;
-    }>(`/api/upload-s3-object?key=${uploadedDocumentKey}`);
+        await fetcher.submit(formData, { method: "POST" });
 
-    const uploadUrl = data.data.signedUrl;
-
-    const response = await axios.put(uploadUrl, file);
-    if (response.status === 200) {
-      const url = getS3Url(uploadedDocumentKey);
-      console.log(url);
-      toast.success("Document uploaded successfully");
-    } else {
-      toast.error("Error uploading document");
-    }
-
-    setIsFileUploading(false);
-  }, [file, uploadedDocumentKey]);
+        toast.success("File uploaded successfully");
+        // Clear form fields
+        setFileName("");
+        setFileDescription("");
+        if (fileInputRef.current) {
+          fileInputRef.current.value = "";
+        }
+      } catch (error) {
+        console.error("Error uploading file:", error);
+        toast.error("Error uploading file");
+      } finally {
+        setIsFileUploading(false);
+      }
+    },
+    [fetcher, project.postId, fileName, fileDescription],
+  );
 
   React.useEffect(() => {
     if (fetcher.state !== "idle") {
@@ -303,11 +271,11 @@ export default function ProjectPage() {
     }
 
     if (fetcher.data.success) {
-      handleFileUpload();
+      toast.success("File upload completed successfully");
+    } else {
+      toast.error("File upload failed");
     }
-
-    setFile(null);
-  }, [fetcher.data, fetcher.state, handleFileUpload]);
+  }, [fetcher.data, fetcher.state]);
 
   const isCompletingProject = completeProjectFetcher.state !== "idle";
   React.useEffect(() => {
@@ -343,260 +311,207 @@ export default function ProjectPage() {
   }, [isPaymentSubmitting, paymentFetcher, paymentFetcher.data]);
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-emerald-800">Project Details</h1>
-        <Link to="/customer/projects">
-          <Button variant="outline" className="flex items-center gap-2">
-            <ArrowLeftIcon className="w-4 h-4" />
-            Back to Projects
-          </Button>
-        </Link>
-      </div>
-
-      <Card className="mb-8 border-emerald-200">
-        <CardHeader className="bg-emerald-50">
-          <CardTitle className="text-2xl text-emerald-800">{project.post.title}</CardTitle>
-        </CardHeader>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 gap-4 mb-4">
-            <div className="flex items-center">
-              <CalendarIcon className="mr-2 h-4 w-4 text-emerald-600" />
-              <span className="text-emerald-800">Due on {formatDate(project.post.deadline)}</span>
-            </div>
-            <div className="flex items-center">
-              <FolderIcon className="mr-2 h-4 w-4 text-emerald-600" />
-              <span className="text-emerald-800">{project.post.category.name}</span>
-            </div>
-            <div className="flex items-center">
-              <DollarSignIcon className="mr-2 h-4 w-4 text-emerald-600" />
-              <span className="text-emerald-800">Budget: ${project.post.bids[0].price}</span>
-            </div>
-            <div className="flex items-center">
-              <span className="font-semibold mr-2 text-emerald-800">Status:</span>
-              <Badge variant={project.status === ProjectStatus.completed ? "default" : "default"}>
-                {titleCase(project.status)}
-              </Badge>
-            </div>
-          </div>
-          <Separator className="my-4" />
-          <p className="text-emerald-800">{project.post.description}</p>
-        </CardContent>
-        <CardFooter className="bg-emerald-50">
-          {project.status === ProjectStatus.in_progress ? (
-            <Button
-              onClick={() => completeProject()}
-              className="bg-emerald-600 hover:bg-emerald-700"
-            >
-              Mark as Done
+    <div className="container mx-auto p-6 bg-gray-50">
+      <header className="mb-8">
+        <div className="flex justify-between items-center">
+          <h1 className="text-3xl font-bold text-gray-800">Project: {project.post.title}</h1>
+          <Link to="/customer/projects">
+            <Button variant="outline" className="flex items-center gap-2">
+              <ArrowLeftIcon className="w-4 h-4" />
+              Back to Projects
             </Button>
-          ) : project.status === ProjectStatus.payment_pending && !project.payment ? (
-            <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
-              <DialogTrigger asChild>
-                <Button variant="default" className="bg-emerald-600 hover:bg-emerald-700">
-                  Make Payment
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle>Payment</DialogTitle>
-                </DialogHeader>
-                <fetcher.Form onSubmit={makePayment} className="space-y-4">
-                  <div>
-                    <Label htmlFor="cardHolderName">Card holder name</Label>
-                    <Input
-                      id="cardHolderName"
-                      value={cardHolderName}
-                      onChange={(e) => setCardHolderName(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="paymentMethod">Payment method</Label>
-                    <Select
-                      value={paymentMethod}
-                      onValueChange={(value) => setPaymentMethod(value as PaymentMethod)}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select payment method" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.values(PaymentMethod).map((method) => (
-                          <SelectItem key={method} value={method}>
-                            {titleCase(method)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label htmlFor="cardNumber">Card number</Label>
-                    <Input
-                      id="cardNumber"
-                      placeholder="XXXX XXXX XXXX XXXX"
-                      value={cardNumber}
-                      onChange={(e) => setCardNumber(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <Label htmlFor="cvv">CVV</Label>
-                      <Input
-                        id="cvv"
-                        placeholder="XXX"
-                        value={cardCvv}
-                        onChange={(e) => setCardCvv(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="expiry">Expiry</Label>
-                      <Input
-                        type="text"
-                        value={displayExpiryDate}
-                        onChange={handleExpiryDateChange}
-                        placeholder="MM/YY"
-                        maxLength={5}
-                      />
-                      {errors.cardExpiry && (
-                        <p className="text-sm text-red-500">{errors.cardExpiry}</p>
-                      )}
-                    </div>
-                  </div>
-                  {Object.values(errors).some((error) => error !== "") && (
-                    <div className="text-red-500">
-                      {Object.values(errors).map((error, index) => (
-                        // biome-ignore lint/suspicious/noArrayIndexKey: <explanation>
-                        <p key={index}>{error}</p>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex justify-end gap-4">
-                    <Button variant="outline" onClick={closePaymentModal}>
-                      Cancel
-                    </Button>
-                    <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
-                      Make Payment
-                    </Button>
-                  </div>
-                </fetcher.Form>
-              </DialogContent>
-            </Dialog>
-          ) : (
-            <div className="flex gap-2">
-              <Badge variant="default">Payment Done</Badge>
-              <Badge variant="default">Project Completed</Badge>
+          </Link>
+        </div>
+        <div className="mt-4 flex flex-wrap items-center gap-4">
+          <Badge variant={project.status === ProjectStatus.completed ? "default" : "outline"}>
+            {titleCase(project.status)}
+          </Badge>
+          <span className="text-gray-600 flex items-center gap-2">
+            <CalendarIcon className="w-4 h-4" />
+            Due on {formatDate(project.post.deadline)}
+          </span>
+          <span className="text-gray-600 flex items-center gap-2">
+            <FolderIcon className="w-4 h-4" />
+            {project.post.category.name}
+          </span>
+        </div>
+      </header>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <Card className="lg:col-span-2">
+          <CardHeader>
+            <CardTitle>Project Details</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-gray-700 mb-4">{project.post.description}</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <h3 className="font-semibold text-gray-700">Budget</h3>
+                <p className="text-2xl font-bold text-green-600">${project.post.budget}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700">Your Price</h3>
+                <p className="text-2xl font-bold text-blue-600">${project.post.bids[0].price}</p>
+              </div>
             </div>
-          )}
-        </CardFooter>
-      </Card>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="border-emerald-200">
-          <CardHeader className="bg-emerald-50">
-            <CardTitle className="text-emerald-800">Your Files</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {project.customerDocuments && project.customerDocuments.length > 0 ? (
-              project.customerDocuments.map((document) => (
-                <div key={document.id} className="flex items-center mb-2">
-                  <FileIcon className="mr-2 h-4 w-4 text-emerald-600" />
-                  <a
-                    href={document.imageUrl}
-                    download
-                    className="text-emerald-600 hover:text-emerald-800 hover:underline"
-                  >
-                    {document.name}.{document.extension}
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p className="text-emerald-800">No documents available</p>
-            )}
           </CardContent>
-        </Card>
-
-        <Card className="border-emerald-200">
-          <CardHeader className="bg-emerald-50">
-            <CardTitle className="text-emerald-800">Editor Files</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {project.editorDocuments && project.editorDocuments.length > 0 ? (
-              project.editorDocuments.map((document) => (
-                <div key={document.id} className="flex items-center mb-2">
-                  <FileIcon className="mr-2 h-4 w-4 text-emerald-600" />
-                  <a
-                    href={getS3Url(document.key)}
-                    download
-                    className="text-emerald-600 hover:text-emerald-800 hover:underline"
-                  >
-                    {document.name}.{document.extension}
-                  </a>
-                </div>
-              ))
-            ) : (
-              <p className="text-emerald-800">No documents available</p>
-            )}
-          </CardContent>
-        </Card>
-
-        {!isProjectCompleted && (
-          <Card className="border-emerald-200">
-            <CardHeader className="bg-emerald-50">
-              <CardTitle className="text-emerald-800">Upload a File</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isFileUploading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-emerald-800 bg-opacity-50 z-10">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-white" />
-                </div>
-              )}
-              <fetcher.Form
-                onSubmit={async (e) => {
-                  e.preventDefault();
-                  if (!file || !uploadedDocumentKey) {
-                    return;
-                  }
-                  const extension = mime.extension(file.type);
-                  const formData = new FormData(e.currentTarget);
-                  formData.append("bucket", window.ENV.AWS_BUCKET);
-                  formData.append("key", uploadedDocumentKey);
-                  formData.append("extension", extension || "");
-                  formData.append("region", window.ENV.AWS_REGION);
-                  fetcher.submit(formData, {
-                    method: "POST",
-                  });
-                }}
-                className="space-y-4"
+          <CardFooter>
+            {project.status === ProjectStatus.in_progress ? (
+              <Button
+                onClick={() => completeProject()}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
               >
-                <input type="hidden" name="postId" value={project.postId} />
-                <div>
-                  <Label htmlFor="name">File Name</Label>
-                  <Input id="name" name="name" required />
-                </div>
-                <div>
-                  <Label htmlFor="description">Description</Label>
-                  <Input id="description" name="description" required />
-                </div>
-                <div>
-                  <input
-                    type="file"
-                    onChange={(e) => setFile(e.currentTarget.files?.[0] ?? null)}
-                    className="w-full"
-                  />
-                </div>
-                <Button
-                  type="submit"
-                  disabled={!file || !uploadedDocumentKey}
-                  className="bg-emerald-600 hover:bg-emerald-700"
-                >
-                  Upload File
-                </Button>
-              </fetcher.Form>
+                Mark as Done
+              </Button>
+            ) : project.status === ProjectStatus.payment_pending && !project.payment ? (
+              <Dialog open={isPaymentModalOpen} onOpenChange={setIsPaymentModalOpen}>
+                <DialogTrigger asChild>
+                  <Button
+                    variant="default"
+                    className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                  >
+                    Make Payment
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="bg-white">
+                  <DialogHeader>
+                    <DialogTitle className="text-emerald-800">Payment</DialogTitle>
+                  </DialogHeader>
+                  <fetcher.Form onSubmit={makePayment} className="space-y-4">
+                    {/* Keep the existing form fields */}
+                    <div className="flex justify-end gap-4">
+                      <Button
+                        variant="outline"
+                        onClick={closePaymentModal}
+                        className="text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                      >
+                        Make Payment
+                      </Button>
+                    </div>
+                  </fetcher.Form>
+                </DialogContent>
+              </Dialog>
+            ) : (
+              <div className="flex gap-2">
+                <Badge variant="default" className="bg-emerald-100 text-emerald-800">
+                  Payment Done
+                </Badge>
+                <Badge variant="default" className="bg-emerald-100 text-emerald-800">
+                  Project Completed
+                </Badge>
+              </div>
+            )}
+          </CardFooter>
+        </Card>
+
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Your Files</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-96 overflow-y-auto">
+              {project.customerDocuments && project.customerDocuments.length > 0 ? (
+                <ul className="space-y-4">
+                  {project.customerDocuments.map((document) => (
+                    <li key={document.id} className="bg-white p-4 rounded-lg shadow">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <FileIcon className="mr-3 h-5 w-5 text-blue-600 flex-shrink-0" />
+                          <div>
+                            <a
+                              href={document.imageUrl}
+                              download
+                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                            >
+                              {document.name}
+                            </a>
+                            <p className="text-sm text-gray-500">{document.description}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400">{document.extension}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 italic">No documents available</p>
+              )}
             </CardContent>
           </Card>
-        )}
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Editor Files</CardTitle>
+            </CardHeader>
+            <CardContent className="max-h-60 overflow-y-auto">
+              {project.editorDocuments && project.editorDocuments.length > 0 ? (
+                <ul className="space-y-2">
+                  {project.editorDocuments.map((document) => (
+                    <li
+                      key={document.id}
+                      className="flex items-center py-2 px-3 bg-emerald-50 rounded-md"
+                    >
+                      <FileIcon className="mr-3 h-5 w-5 text-emerald-600 flex-shrink-0" />
+                      <a
+                        href={getS3Url(document.key)}
+                        download
+                        className="text-emerald-600 hover:text-emerald-800 hover:underline truncate"
+                      >
+                        {document.name}.{document.extension}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-emerald-600 italic">No documents available</p>
+              )}
+            </CardContent>
+          </Card>
+
+          {!isProjectCompleted && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Upload a File</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+                  <Input
+                    placeholder="File name (optional)"
+                    value={fileName}
+                    onChange={(e) => setFileName(e.target.value)}
+                  />
+                  <Input
+                    placeholder="File description (optional)"
+                    value={fileDescription}
+                    onChange={(e) => setFileDescription(e.target.value)}
+                  />
+                  <Input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        handleFileUpload(file);
+                      }
+                    }}
+                    disabled={isFileUploading}
+                  />
+                  {isFileUploading && (
+                    <div className="flex items-center justify-center">
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+                    </div>
+                  )}
+                </form>
+              </CardContent>
+            </Card>
+          )}
+        </div>
       </div>
     </div>
   );

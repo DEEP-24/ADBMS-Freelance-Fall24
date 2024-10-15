@@ -16,7 +16,7 @@ import { Switch } from "~/components/ui/switch";
 import { verifyAdminLogin } from "~/lib/admin.server";
 import { verifyCustomerLogin } from "~/lib/customer.server";
 import { verifyEditorLogin } from "~/lib/editor.server";
-import { createUserSession, getUserId } from "~/lib/session.server";
+import { createUserSession, getUser, getUserRole } from "~/lib/session.server";
 import { LoginSchema } from "~/lib/zod.schema";
 import { UserRole } from "~/roles";
 import { badRequest, safeRedirect } from "~/utils/misc.server";
@@ -29,10 +29,13 @@ const userRoleRedirect = {
 } satisfies Record<UserRole, string>;
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await getUserId(request);
-  if (userId) {
-    return redirect("/");
+  const user = await getUser(request);
+  const userRole = await getUserRole(request);
+
+  if (user) {
+    return redirect(userRoleRedirect[userRole as UserRole]);
   }
+
   return null;
 }
 

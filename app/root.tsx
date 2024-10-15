@@ -1,5 +1,13 @@
 import type { LinksFunction, LoaderFunctionArgs, SerializeFrom } from "@remix-run/node";
-import { Links, Meta, Outlet, Scripts, ScrollRestoration, json } from "@remix-run/react";
+import {
+  Links,
+  Meta,
+  Outlet,
+  Scripts,
+  ScrollRestoration,
+  json,
+  useLoaderData,
+} from "@remix-run/react";
 import DefaultErrorBoundary from "~/components/ui/error-boundary";
 import iconsHref from "~/components/ui/icons/sprite.svg?url";
 import "./tailwind.css";
@@ -51,6 +59,8 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 };
 
 export function Layout({ children }: { children: React.ReactNode }) {
+  const data = useLoaderData<RootLoaderData>();
+
   return (
     <html lang="en">
       <head>
@@ -61,6 +71,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body suppressHydrationWarning className="h-screen">
         {children}
+        <script dangerouslySetInnerHTML={{ __html: `window.ENV = ${JSON.stringify(data.ENV)}` }} />
         <Toaster richColors closeButton />
         <ScrollRestoration />
         <Scripts />
