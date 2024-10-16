@@ -12,15 +12,25 @@ import {
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import invariant from "tiny-invariant";
 
-const REGION = process.env.AWS_REGION;
-const BUCKET = process.env.AWS_BUCKET;
-const ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID;
-const SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY;
+let REGION: string;
+let BUCKET: string;
+let ACCESS_KEY_ID: string;
+let SECRET_ACCESS_KEY: string;
 
-invariant(REGION, "Missing AWS_REGION");
-invariant(BUCKET, "Missing AWS_BUCKET");
-invariant(ACCESS_KEY_ID, "Missing AWS_ACCESS_KEY_ID");
-invariant(SECRET_ACCESS_KEY, "Missing AWS_SECRET_ACCESS_KEY");
+try {
+  REGION = process.env.AWS_REGION ?? "";
+  BUCKET = process.env.AWS_BUCKET ?? "";
+  ACCESS_KEY_ID = process.env.AWS_ACCESS_KEY_ID ?? "";
+  SECRET_ACCESS_KEY = process.env.AWS_SECRET_ACCESS_KEY ?? "";
+
+  invariant(REGION, "Missing AWS_REGION");
+  invariant(BUCKET, "Missing AWS_BUCKET");
+  invariant(ACCESS_KEY_ID, "Missing AWS_ACCESS_KEY_ID");
+  invariant(SECRET_ACCESS_KEY, "Missing AWS_SECRET_ACCESS_KEY");
+} catch (error) {
+  console.error("Error initializing S3 environment variables:", error);
+  throw error;
+}
 
 /**
  * Creates an S3 client.

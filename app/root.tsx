@@ -7,6 +7,7 @@ import {
   ScrollRestoration,
   json,
   useLoaderData,
+  useRouteError,
 } from "@remix-run/react";
 import DefaultErrorBoundary from "~/components/ui/error-boundary";
 import iconsHref from "~/components/ui/icons/sprite.svg?url";
@@ -30,16 +31,16 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     customer: Awaited<ReturnType<typeof getCustomer>>;
     editor: Awaited<ReturnType<typeof getEditor>>;
     ENV: {
-      AWS_REGION?: string;
-      AWS_BUCKET?: string;
+      AWS_REGION: string;
+      AWS_BUCKET: string;
     };
   } = {
     admin: null,
     customer: null,
     editor: null,
     ENV: {
-      AWS_REGION: process.env.AWS_REGION,
-      AWS_BUCKET: process.env.AWS_BUCKET,
+      AWS_REGION: process.env.AWS_REGION || "",
+      AWS_BUCKET: process.env.AWS_BUCKET || "",
     },
   };
 
@@ -71,7 +72,11 @@ export function Layout({ children }: { children: React.ReactNode }) {
       </head>
       <body suppressHydrationWarning className="h-screen">
         {children}
-        <script dangerouslySetInnerHTML={{ __html: `window.ENV = ${JSON.stringify(data.ENV)}` }} />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `window.ENV = ${JSON.stringify(data.ENV || {})};`,
+          }}
+        />
         <Toaster richColors closeButton />
         <ScrollRestoration />
         <Scripts />
@@ -85,7 +90,8 @@ export default function App() {
 }
 
 export function ErrorBoundary() {
-  return <DefaultErrorBoundary />;
+  const error = useRouteError();
+  return <DefaultErrorBoundary error={error} />;
 }
 
 export function HydrateFallback() {

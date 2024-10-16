@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs, json } from "@remix-run/node";
+import { type LoaderFunctionArgs, json, redirect } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { CalendarIcon, DollarSignIcon, FolderIcon, UserIcon } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
@@ -6,14 +6,19 @@ import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Separator } from "~/components/ui/separator";
 import { db } from "~/lib/db.server";
-import { requireUserId } from "~/lib/session.server";
+import { getUser } from "~/lib/session.server";
 import { formatDate, projectStatusColorLookup, projectStatusLabelLookup } from "~/utils/misc";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await requireUserId(request);
+  const user = await getUser(request);
+
+  if (!user) {
+    return redirect("/login");
+  }
+
   const projects = await db.project.findMany({
     where: {
-      customerId: userId,
+      customerId: user.id,
     },
     include: {
       post: {

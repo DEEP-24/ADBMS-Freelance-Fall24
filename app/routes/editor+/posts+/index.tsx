@@ -2,8 +2,10 @@ import { PostStatus } from "@prisma/client";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
+import { CalendarIcon, DollarSignIcon, FolderIcon } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { db } from "~/lib/db.server";
 import { requireUserId } from "~/lib/session.server";
 import { formatDate, postStatusColorLookup, postStatusLabelLookup } from "~/utils/misc";
@@ -55,68 +57,91 @@ export default function EditorPosts() {
   const { posts } = useLoaderData<typeof loader>();
 
   return (
-    <ul className="divide-y divide-gray-100 p-10">
+    <div className="w-full mx-auto p-10">
+      <h1 className="text-3xl font-bold text-gray-900 mb-6">Available Posts</h1>
+
       {posts.length > 0 ? (
-        <>
+        <div className="space-y-6">
           {posts.map((post) => {
-            const isProjectOpen = post.status === PostStatus.open;
             const hasEditorBidded = post.bids.length > 0;
-            const isProjectAllotedToEditor = !isProjectOpen && post.bids.length > 0;
+            const isProjectAllotedToEditor = post.project.length > 0;
 
             return (
-              <li key={post.id} className="flex items-center justify-between gap-x-6 py-5">
-                <div className="min-w-0">
-                  <div className="flex items-start gap-x-3">
-                    <p className="text-lg font-semibold leading-6 text-white">{post.title}</p>
-                    <p className="whitespace-nowrap text-sm text-white">(${post.budget})</p>
+              <Card
+                key={post.id}
+                className="overflow-hidden hover:shadow-lg transition-shadow duration-300"
+              >
+                <CardHeader className="pb-2">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <CardTitle className="text-xl font-bold mb-1">{post.title}</CardTitle>
+                      <div className="flex items-center text-sm text-gray-500 gap-4">
+                        <div className="flex items-center gap-1 mt-2">
+                          <CalendarIcon className="w-4 h-4" />
+                          <span>Due on</span>{" "}
+                          <time dateTime={post.deadline}>{formatDate(post.deadline)}</time>
+                        </div>
+                        <div className="flex items-center gap-1 mt-2">
+                          <FolderIcon className="w-4 h-4" />
+                          <span>{post.category.name}</span>
+                        </div>
+                      </div>
+                    </div>
                     <Badge variant="default" color={postStatusColorLookup[post.status]}>
                       {postStatusLabelLookup[post.status]}
                     </Badge>
                   </div>
-                  <div className="mt-1 flex items-center gap-x-2 text-xs leading-5 text-white">
-                    <p className="whitespace-nowrap font-semibold">{post.category.name}</p>
-                    <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current">
-                      <circle cx={1} cy={1} r={1} />
-                    </svg>
-                    <p className="whitespace-nowrap">
-                      Due on <time dateTime={post.deadline}>{formatDate(post.deadline)}</time>
-                    </p>
-                    <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current">
-                      <circle cx={1} cy={1} r={1} />
-                    </svg>
-                    <p className="truncate">Created by {post.customer.firstName}</p>
-                  </div>
-                </div>
-                <div className="flex flex-none items-center gap-x-4">
-                  {hasEditorBidded ? (
-                    isProjectAllotedToEditor ? (
-                      <Link to={`/editor/projects/${post.project?.[0].id}`}>
-                        <Button color="red" size="sm" asChild>
-                          View Project
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <p className="text-sm text-gray-600 mb-4">{post.description}</p>
+                    <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                      <span className="text-sm font-medium text-gray-600 flex items-center">
+                        <DollarSignIcon className="w-4 h-4 mr-1" />
+                        Budget
+                      </span>
+                      <span className="font-semibold text-green-600">
+                        {new Intl.NumberFormat("en-US", {
+                          style: "currency",
+                          currency: "USD",
+                        }).format(post.budget)}
+                      </span>
+                    </div>
+                    <div className="mt-4">
+                      {isProjectAllotedToEditor ? (
+                        <Button
+                          variant="default"
+                          size="sm"
+                          asChild
+                          className="bg-emerald-500 hover:bg-emerald-600"
+                        >
+                          <Link to={`/editor/projects/${post.project[0].id}`}>View Project</Link>
                         </Button>
-                      </Link>
-                    ) : (
-                      <Button color="red" disabled>
-                        Already Bidded
-                      </Button>
-                    )
-                  ) : (
-                    <Button color="green">
-                      <Link to={`/editor/posts/${post.id}/bid`} className="text-white">
-                        Bid
-                      </Link>
-                    </Button>
-                  )}
-                </div>
-              </li>
+                      ) : hasEditorBidded ? (
+                        <Button variant="default" disabled>
+                          Already Bidded
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="default"
+                          asChild
+                          className="bg-emerald-500 hover:bg-emerald-600"
+                        >
+                          <Link to={`/editor/posts/${post.id}/bid`}>Bid</Link>
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             );
           })}
-        </>
+        </div>
       ) : (
-        <div className="flex h-full items-center justify-center">
-          <p className="text-white">No posts are present</p>
+        <div className="flex items-center justify-center bg-gray-100 rounded-md p-8">
+          <p className="text-gray-600 text-lg">No posts are available at the moment.</p>
         </div>
       )}
-    </ul>
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import { PostStatus } from "@prisma/client";
 import type { LoaderFunctionArgs } from "@remix-run/node";
-import { json } from "@remix-run/node";
+import { json, redirect } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
 import { CalendarIcon, DollarSignIcon, FolderIcon, PlusIcon } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
@@ -12,30 +12,39 @@ import { getUser } from "~/lib/session.server";
 import { formatDate } from "~/utils/misc";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const user = await getUser(request);
+  try {
+    const user = await getUser(request);
 
-  const posts = await db.post.findMany({
-    where: {
-      customerId: user?.id,
-    },
-    orderBy: {
-      createdAt: "desc",
-    },
-    include: {
-      project: {
-        select: {
-          id: true,
-        },
+    if (!user) {
+      return redirect("/login");
+    }
+
+    const posts = await db.post.findMany({
+      where: {
+        customerId: user.id,
       },
-      customer: true,
-      category: true,
-      bids: true,
-    },
-  });
+      orderBy: {
+        createdAt: "desc",
+      },
+      include: {
+        project: {
+          select: {
+            id: true,
+          },
+        },
+        customer: true,
+        category: true,
+        bids: true,
+      },
+    });
 
-  return json({
-    posts: posts,
-  });
+    return json({
+      posts: posts,
+    });
+  } catch (error) {
+    console.error("Error in loader:", error);
+    return json({ posts: [], error: "An error occurred while loading posts" }, { status: 500 });
+  }
 }
 
 export default function CustomerPosts() {
@@ -118,7 +127,7 @@ export default function CustomerPosts() {
                     </>
                   )}
                   <div className="mt-4">
-                    {post.project ? (
+                    {post.project && post.project.length > 0 ? (
                       <Button
                         variant="default"
                         size="sm"

@@ -2,9 +2,7 @@ import type { ErrorResponse } from "@remix-run/node";
 import { Link, isRouteErrorResponse, useRouteError } from "@remix-run/react";
 import { Icon } from "./icon";
 
-export default function DefaultErrorBoundary() {
-  const error = useRouteError();
-
+export default function DefaultErrorBoundary({ error }: { error: unknown }) {
   if (isRouteErrorResponse(error)) {
     return <CatchBoundary caught={error} />;
   }
@@ -23,7 +21,7 @@ export default function DefaultErrorBoundary() {
           problem persists.
         </p>
       </div>
-      {stack && (
+      {stack && process.env.NODE_ENV === "development" && (
         <div className="my-4 w-[95%] bg-white p-4 text-black">
           <pre className="max-w-full overflow-auto ">{stack}</pre>
           <p className="mt-4 italic text-red-500">Stack trace only displayed in DEVELOPMENT</p>

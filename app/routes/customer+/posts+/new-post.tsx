@@ -1,11 +1,10 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { useFetcher, useLoaderData } from "@remix-run/react";
-import { addDays, differenceInDays, format, parseISO } from "date-fns";
+import { addDays, format } from "date-fns";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "~/components/ui/button";
-import { Calendar } from "~/components/ui/calendar";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 import {
@@ -17,14 +16,15 @@ import {
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
 import { db } from "~/lib/db.server";
-import { requireUserId } from "~/lib/session.server";
+import { getUser, requireUserId } from "~/lib/session.server";
 import { CreatePostSchema } from "~/lib/zod.schema";
 import { badRequest } from "~/utils/misc.server";
 import { type inferErrors, validateAction } from "~/utils/validation";
 
 export async function loader({ request }: LoaderFunctionArgs) {
-  const userId = await requireUserId(request);
-  if (!userId) {
+  const user = await getUser(request);
+
+  if (!user?.id) {
     return redirect("/login");
   }
 
@@ -221,7 +221,7 @@ export default function NewCategoryPost() {
                 Cancel
               </Button>
               <Button type="submit" form="form">
-                Submit
+                Create Post
               </Button>
             </div>
           </fieldset>
