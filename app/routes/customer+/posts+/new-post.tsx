@@ -220,7 +220,11 @@ export default function NewCategoryPost() {
               >
                 Cancel
               </Button>
-              <Button type="submit" form="form">
+              <Button
+                type="submit"
+                form="form"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
                 Create Post
               </Button>
             </div>

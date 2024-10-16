@@ -3,12 +3,21 @@ import { json, redirect } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData } from "@remix-run/react";
 import {
   ArrowLeftIcon,
+  Award,
+  Briefcase,
+  Calendar,
   CalendarIcon,
   CheckIcon,
   DollarSignIcon,
   EyeIcon,
   FileTextIcon,
   FolderIcon,
+  Link as LinkIcon,
+  Mail,
+  MapPin,
+  MessageSquare,
+  Phone,
+  User,
   XIcon,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -20,13 +29,28 @@ import { badRequest } from "~/utils/misc.server";
 import type { inferErrors } from "~/utils/validation";
 import { validateAction } from "~/utils/validation";
 
+import { Star } from "lucide-react";
 import { Avatar, AvatarFallback } from "~/components/ui/avatar";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
-import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "~/components/ui/dialog";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { Separator } from "~/components/ui/separator";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "~/components/ui/table";
 
 const createProjectSchema = z.object({
   postId: z.string().optional(),
@@ -57,18 +81,26 @@ export async function loader({ params }: LoaderFunctionArgs) {
     return redirect("/customer/posts");
   }
 
-  const bids = await db.bid.findMany({
-    where: {
-      postId: post.id,
-    },
-    include: {
-      editor: true,
-    },
-  });
+  // Fetch feedback for each editor
+  const bidsWithFeedback = await Promise.all(
+    post.bids.map(async (bid) => {
+      const editorFeedback = await db.feedback.findMany({
+        where: {
+          Project: {
+            editorId: bid.editorId,
+          },
+        },
+        include: {
+          Customer: true,
+        },
+      });
+      return { ...bid, editorFeedback };
+    }),
+  );
 
   return json({
     post: post,
-    bids: bids,
+    bids: bidsWithFeedback,
   });
 }
 
@@ -300,8 +332,8 @@ export default function ViewPost() {
                         )}
                       </CardContent>
                       <CardFooter className="flex flex-col space-y-3">
-                        <Popover>
-                          <PopoverTrigger asChild>
+                        <Dialog>
+                          <DialogTrigger asChild>
                             <Button
                               variant="outline"
                               size="sm"
@@ -309,37 +341,133 @@ export default function ViewPost() {
                             >
                               <EyeIcon className="mr-2 h-4 w-4" /> View Details
                             </Button>
-                          </PopoverTrigger>
-                          <PopoverContent className="w-80 border-emerald-200">
-                            <div className="space-y-2">
-                              <h4 className="font-medium mb-2 text-black">Editor Details</h4>
-                              <p className="text-sm text-black">
-                                <b>Skills:</b> {bid.editor.skills}
-                              </p>
-                              <p className="text-sm text-black">
-                                <b>Experience:</b> {bid.editor.experience}
-                              </p>
-                              <p className="text-sm text-black">
-                                <b>Portfolio:</b>{" "}
-                                {bid.editor.portfolio ? (
-                                  <a
-                                    href={bid.editor.portfolio}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="text-emerald-600 hover:text-emerald-700 underline"
-                                  >
-                                    View Portfolio
-                                  </a>
-                                ) : (
-                                  "Not available"
-                                )}
-                              </p>
-                              <p className="text-sm text-black">
-                                <b>Awards:</b> {bid.editor.awards}
-                              </p>
+                          </DialogTrigger>
+                          <DialogContent className="max-w-4xl max-h-[80vh]">
+                            <DialogHeader>
+                              <DialogTitle className="text-2xl font-bold text-emerald-700">
+                                Editor Details
+                              </DialogTitle>
+                            </DialogHeader>
+                            <div className="flex space-x-6">
+                              <div className="w-1/2 space-y-6">
+                                <div className="bg-emerald-50 p-6 rounded-lg">
+                                  <h4 className="font-semibold mb-4 text-lg text-emerald-800 flex items-center">
+                                    <User className="mr-2 h-5 w-5" />
+                                    Personal Information
+                                  </h4>
+                                  <div className="space-y-3 text-sm">
+                                    <p className="flex items-center">
+                                      <User className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Name:</span>
+                                      {bid.editor.firstName} {bid.editor.lastName}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <Mail className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Email:</span>
+                                      {bid.editor.email}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <Phone className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Phone:</span>
+                                      {bid.editor.phoneNo || "Not provided"}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <MapPin className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Location:</span>
+                                      {bid.editor.address || "Not specified"}
+                                    </p>
+                                  </div>
+                                </div>
+                                <div className="bg-emerald-50 p-6 rounded-lg">
+                                  <h4 className="font-semibold mb-4 text-lg text-emerald-800 flex items-center">
+                                    <Briefcase className="mr-2 h-5 w-5" />
+                                    Professional Information
+                                  </h4>
+                                  <div className="space-y-3 text-sm">
+                                    <p className="flex items-center">
+                                      <Briefcase className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Skills:</span>{" "}
+                                      {bid.editor.skills}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <Award className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Experience:</span>{" "}
+                                      {bid.editor.experience}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <LinkIcon className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Portfolio:</span>
+                                      {bid.editor.portfolio ? (
+                                        <a
+                                          href={bid.editor.portfolio}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-emerald-600 hover:text-emerald-700 underline"
+                                        >
+                                          View Portfolio
+                                        </a>
+                                      ) : (
+                                        "Not available"
+                                      )}
+                                    </p>
+                                    <p className="flex items-center">
+                                      <Award className="mr-2 h-4 w-4 text-emerald-600" />
+                                      <span className="font-medium mr-2">Awards:</span>{" "}
+                                      {bid.editor.awards || "None"}
+                                    </p>
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="w-1/2 space-y-6">
+                                <div className="bg-gray-50 p-6 rounded-lg">
+                                  <h4 className="font-semibold mb-4 text-lg text-emerald-800 flex items-center">
+                                    <MessageSquare className="mr-2 h-5 w-5" />
+                                    Customer Feedback
+                                  </h4>
+                                  {bid.editorFeedback && bid.editorFeedback.length > 0 ? (
+                                    <ScrollArea className="h-[400px] pr-4">
+                                      <div className="space-y-4">
+                                        {bid.editorFeedback.map((feedback) => (
+                                          <div
+                                            key={feedback.id}
+                                            className="bg-white p-4 rounded-lg shadow-sm border border-gray-100"
+                                          >
+                                            <div className="flex justify-between items-center mb-2">
+                                              <p className="font-medium text-emerald-700">
+                                                {feedback.Customer?.firstName}{" "}
+                                                {feedback.Customer?.lastName}
+                                              </p>
+                                              <div className="flex items-center">
+                                                {[1, 2, 3, 4, 5].map((star) => (
+                                                  <Star
+                                                    key={star}
+                                                    className={`w-4 h-4 ${
+                                                      star <= feedback.rating
+                                                        ? "text-yellow-500 fill-current"
+                                                        : "text-gray-300"
+                                                    }`}
+                                                  />
+                                                ))}
+                                                <span className="ml-1 text-sm text-gray-600">
+                                                  ({feedback.rating}/5)
+                                                </span>
+                                              </div>
+                                            </div>
+                                            <p className="text-gray-700">{feedback.comment}</p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </ScrollArea>
+                                  ) : (
+                                    <p className="text-sm text-gray-500 italic">
+                                      No feedback available yet.
+                                    </p>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-                          </PopoverContent>
-                        </Popover>
+                          </DialogContent>
+                        </Dialog>
                         <div className="flex w-full space-x-2">
                           <Button
                             variant="default"
