@@ -1,7 +1,10 @@
 import { type LoaderFunctionArgs, json } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
+import { CalendarIcon, DollarSignIcon, FolderIcon, UserIcon } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Separator } from "~/components/ui/separator";
 import { db } from "~/lib/db.server";
 import { requireUserId } from "~/lib/session.server";
 import { formatDate, projectStatusColorLookup, projectStatusLabelLookup } from "~/utils/misc";
@@ -33,35 +36,96 @@ export default function Projects() {
   const { projects } = useLoaderData<typeof loader>();
 
   return (
-    <div className="divide-y divide-gray-100 bg-black p-10">
-      {projects.map((project) => (
-        <li key={project.id} className="flex items-center justify-between gap-x-6 py-5">
-          <div className="min-w-0">
-            <div className="flex items-start gap-x-3">
-              <p className="text-xl font-semibold leading-6 text-white">{project.post.title}</p>
-              <p className="whitespace-nowrap text-lg text-white">(${project.post.budget})</p>
-              <Badge variant="default" color={projectStatusColorLookup[project.status]}>
-                {projectStatusLabelLookup[project.status]}
-              </Badge>
-            </div>
-            <div className="mt-1 flex items-center gap-x-2 text-base leading-5 text-gray-400">
-              <p className="whitespace-nowrap font-semibold">{project.post.category.name}</p>
-              <svg viewBox="0 0 2 2" className="h-0.5 w-0.5 fill-current">
-                <circle cx={1} cy={1} r={1} />
-              </svg>
-              <p className="whitespace-nowrap">
-                Due on{" "}
-                <time dateTime={project.post.deadline}>{formatDate(project.post.deadline)}</time>
-              </p>
-            </div>
-          </div>
-          <div className="flex flex-none items-center gap-x-4">
-            <Link to={`/editor/projects/${project.id}`}>
-              <Button variant="outline">View Project</Button>
-            </Link>
-          </div>
-        </li>
-      ))}
+    <div className="w-full mx-auto p-10">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold text-gray-900">My Projects</h1>
+      </div>
+
+      {projects.length > 0 ? (
+        <div className="space-y-6">
+          {projects.map((project) => (
+            <Card
+              key={project.id}
+              className="overflow-hidden hover:shadow-lg transition-shadow duration-300"
+            >
+              <CardHeader className="pb-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <CardTitle className="text-xl font-bold mb-1">{project.post.title}</CardTitle>
+                    <div className="flex items-center text-sm text-gray-500 gap-4">
+                      <div className="flex items-center gap-1 mt-2">
+                        <CalendarIcon className="w-4 h-4" />
+                        <span>Due on</span>{" "}
+                        <time dateTime={project.post.deadline}>
+                          {formatDate(project.post.deadline)}
+                        </time>
+                      </div>
+                      <div className="flex items-center gap-1 mt-2">
+                        <FolderIcon className="w-4 h-4" />
+                        <span>{project.post.category.name}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <Badge variant="default" color={projectStatusColorLookup[project.status]}>
+                    {projectStatusLabelLookup[project.status]}
+                  </Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-4">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+                    <span className="text-sm font-medium text-gray-600 flex items-center">
+                      <DollarSignIcon className="w-4 h-4 mr-1" />
+                      Budget
+                    </span>
+                    <span className="font-semibold text-green-600">
+                      {new Intl.NumberFormat("en-US", {
+                        style: "currency",
+                        currency: "USD",
+                      }).format(project.post.budget)}
+                    </span>
+                  </div>
+                  <Separator />
+                  <div className="pt-2">
+                    <p className="text-sm font-medium mb-2">Project Details</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="bg-gray-50 p-3 rounded-md">
+                        <span className="text-sm text-gray-600 block">Customer</span>
+                        <span className="font-semibold flex items-center">
+                          <UserIcon className="w-4 h-4 mr-1" />
+                          {project.customer.firstName} {project.customer.lastName}
+                        </span>
+                      </div>
+                      <div className="bg-gray-50 p-3 rounded-md">
+                        <span className="text-sm text-gray-600 block">Your Bid</span>
+                        <span className="font-semibold text-green-600">
+                          {new Intl.NumberFormat("en-US", {
+                            style: "currency",
+                            currency: "USD",
+                          }).format(project.post.bids.find((bid) => bid.approved)?.price || 0)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="mt-4">
+                    <Button
+                      variant="default"
+                      asChild
+                      className="bg-emerald-500 hover:bg-emerald-600"
+                    >
+                      <Link to={`/editor/projects/${project.id}`}>View Project</Link>
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <div className="flex items-center justify-center bg-gray-100 rounded-md p-8">
+          <p className="text-gray-600 text-lg">No projects found. Bid on posts to get started!</p>
+        </div>
+      )}
     </div>
   );
 }

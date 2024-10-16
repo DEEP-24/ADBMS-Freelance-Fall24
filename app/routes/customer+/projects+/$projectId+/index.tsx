@@ -1,54 +1,30 @@
 import { PaymentMethod, ProjectStatus } from "@prisma/client";
-import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "@remix-run/node";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData } from "@remix-run/react";
 import axios from "axios";
-import { ArrowLeftIcon, CalendarIcon, FileIcon, FolderIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, FileIcon, FolderIcon, UserIcon } from "lucide-react";
 import * as mime from "mime-types";
 import * as React from "react";
 import { toast } from "sonner";
-import { z } from "zod";
+import type { z } from "zod";
 
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "~/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
 import { Label } from "~/components/ui/label";
 
 import { db } from "~/lib/db.server";
 import { getS3Url, getUniqueS3Key } from "~/lib/s3-utils";
 import { requireUserId } from "~/lib/session.server";
+import { createFileEntrySchema, paymentSchema } from "~/lib/zod.schema";
 import type { CompleteProjectActionData } from "~/routes/api+/completeProject";
 import type { PaymentActionData } from "~/routes/api+/payment";
 import { formatDate, titleCase } from "~/utils/misc";
 import { badRequest } from "~/utils/misc.server";
 import { type inferErrors, validateAction } from "~/utils/validation";
-
-const createFileEntrySchema = z.object({
-  name: z.string().min(3, "File name must be at least 3 characters long"),
-  description: z.string().optional(),
-  key: z.string().min(1, "File must be selected"),
-  bucket: z.string().min(1, "File must be selected"),
-  extension: z.string().min(1, "File must be selected"),
-  region: z.string().min(1, "File must be selected"),
-  postId: z.string().min(1, "postId is required"),
-  type: z.string().optional(),
-});
-
-// Add this schema for payment validation
-const paymentSchema = z.object({
-  cardHolderName: z.string().min(1, "Card holder name is required"),
-  cardNumber: z.string().length(16, "Card number must be 16 digits"),
-  cardExpiry: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Invalid expiry date format (MM/YY)"),
-  cardCvv: z.string().length(3, "CVV must be 3 digits"),
-});
 
 export const loader = async ({ params }: LoaderFunctionArgs) => {
   const project = await db.project.findUnique({
@@ -362,7 +338,7 @@ export default function ProjectPage() {
           </CardHeader>
           <CardContent>
             <p className="text-gray-700 mb-4">{project.post.description}</p>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <div>
                 <h3 className="font-semibold text-gray-700">Budget</h3>
                 <p className="text-2xl font-bold text-green-600">${project.post.budget}</p>
@@ -370,6 +346,13 @@ export default function ProjectPage() {
               <div>
                 <h3 className="font-semibold text-gray-700">Editor Price</h3>
                 <p className="text-2xl font-bold text-blue-600">${project.post.bids[0].price}</p>
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-700">Editor Name</h3>
+                <p className="text-lg font-bold text-blue-600 flex items-center">
+                  <UserIcon className="w-5 h-5 mr-1" />
+                  {project.editor.firstName} {project.editor.lastName}
+                </p>
               </div>
             </div>
           </CardContent>
@@ -475,15 +458,18 @@ export default function ProjectPage() {
               {project.customerDocuments && project.customerDocuments.length > 0 ? (
                 <ul className="space-y-4">
                   {project.customerDocuments.map((document) => (
-                    <li key={document.id} className="bg-white p-4 rounded-lg shadow">
+                    <li
+                      key={document.id}
+                      className="shadow border border-gray-200 bg-emerald-50 rounded-md py-2 px-3"
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center">
-                          <FileIcon className="mr-3 h-5 w-5 text-blue-600 flex-shrink-0" />
+                          <FileIcon className="mr-3 h-5 w-5 text-emerald-600 flex-shrink-0" />
                           <div>
                             <a
                               href={document.imageUrl}
                               download
-                              className="text-blue-600 hover:text-blue-800 hover:underline font-medium"
+                              className="text-emerald-600 hover:text-emerald-800 hover:underline font-medium"
                             >
                               {document.name}
                             </a>
@@ -507,20 +493,28 @@ export default function ProjectPage() {
             </CardHeader>
             <CardContent className="max-h-60 overflow-y-auto">
               {project.editorDocuments && project.editorDocuments.length > 0 ? (
-                <ul className="space-y-2">
+                <ul className="space-y-4">
                   {project.editorDocuments.map((document) => (
                     <li
                       key={document.id}
-                      className="flex items-center py-2 px-3 bg-emerald-50 rounded-md"
+                      className="shadow border border-gray-200 bg-emerald-50 rounded-md py-2 px-3"
                     >
-                      <FileIcon className="mr-3 h-5 w-5 text-emerald-600 flex-shrink-0" />
-                      <a
-                        href={getS3Url(document.key)}
-                        download
-                        className="text-emerald-600 hover:text-emerald-800 hover:underline truncate"
-                      >
-                        {document.name}.{document.extension}
-                      </a>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                          <FileIcon className="mr-3 h-5 w-5 text-emerald-600 flex-shrink-0" />
+                          <div>
+                            <a
+                              href={getS3Url(document.key)}
+                              download
+                              className="text-emerald-600 hover:text-emerald-800 hover:underline truncate"
+                            >
+                              {document.name}.{document.extension}
+                            </a>
+                            <p className="text-sm text-gray-500">{document.description}</p>
+                          </div>
+                        </div>
+                        <span className="text-xs text-gray-400">{document.extension}</span>
+                      </div>
                     </li>
                   ))}
                 </ul>

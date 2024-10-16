@@ -56,3 +56,21 @@ export const CreatePostSchema = z.object({
   duration: z.string().min(1, "Duration must be a positive number"),
   deadline: z.string(),
 });
+
+export const createFileEntrySchema = z.object({
+  name: z.string().min(3, "File name must be at least 3 characters long"),
+  description: z.string().optional(),
+  key: z.string().min(1, "File must be selected"),
+  bucket: z.string().min(1, "File must be selected"),
+  extension: z.string().min(1, "File must be selected"),
+  region: z.string().min(1, "File must be selected"),
+  postId: z.string().min(1, "postId is required"),
+  type: z.string().optional(),
+});
+
+export const paymentSchema = z.object({
+  cardHolderName: z.string().min(1, "Card holder name is required"),
+  cardNumber: z.string().length(16, "Card number must be 16 digits"),
+  cardExpiry: z.string().regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Invalid expiry date format (MM/YY)"),
+  cardCvv: z.string().length(3, "CVV must be 3 digits"),
+});

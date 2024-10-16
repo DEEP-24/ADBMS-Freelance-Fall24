@@ -259,7 +259,7 @@ export default function ViewPost() {
                       className={`
                         ${isApprovedBid ? "border-emerald-500" : ""}
                         ${isDeclinedBid ? "border-red-500" : ""}
-                        transition-all duration-300 hover:shadow-lg border-emerald-200
+                        transition-all duration-300 ${isApprovedBid || isDeclinedBid ? "" : "border-emerald-200"}
                       `}
                     >
                       <CardHeader className="pb-2">

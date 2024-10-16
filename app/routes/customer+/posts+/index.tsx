@@ -2,7 +2,7 @@ import { PostStatus } from "@prisma/client";
 import type { LoaderFunctionArgs } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useLoaderData } from "@remix-run/react";
-import { CalendarIcon, DollarSignIcon, FolderIcon, PlusIcon } from "lucide-react";
+import { CalendarIcon, DollarSignIcon, FolderIcon, PlusIcon, UserIcon } from "lucide-react";
 import { Badge } from "~/components/ui/badge";
 import { Button } from "~/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
@@ -34,7 +34,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
         },
         customer: true,
         category: true,
-        bids: true,
+        bids: {
+          include: {
+            editor: {
+              select: {
+                firstName: true,
+                lastName: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -108,7 +117,7 @@ export default function CustomerPosts() {
                       <Separator />
                       <div className="pt-2">
                         <p className="text-sm font-medium mb-2">Project Details</p>
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="grid grid-cols-3 gap-2">
                           <div className="bg-gray-50 p-3 rounded-md">
                             <span className="text-sm text-gray-600 block">Status</span>
                             <Badge variant="default">{post.status}</Badge>
@@ -120,6 +129,14 @@ export default function CustomerPosts() {
                                 style: "currency",
                                 currency: "USD",
                               }).format(post.bids.find((bid) => bid.approved)?.price ?? 0)}
+                            </span>
+                          </div>
+                          <div className="bg-gray-50 p-3 rounded-md">
+                            <span className="text-sm text-gray-600 block">Editor</span>
+                            <span className="font-semibold flex items-center">
+                              <UserIcon className="w-4 h-4 mr-1" />
+                              {post.bids.find((bid) => bid.approved)?.editor?.firstName}{" "}
+                              {post.bids.find((bid) => bid.approved)?.editor?.lastName}
                             </span>
                           </div>
                         </div>
