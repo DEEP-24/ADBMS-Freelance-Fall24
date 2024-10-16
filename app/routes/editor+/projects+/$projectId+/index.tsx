@@ -3,7 +3,15 @@ import type { DataFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData } from "@remix-run/react";
 import axios from "axios";
-import { ArrowLeftIcon, CalendarIcon, FileIcon, FolderIcon, Star, UserIcon } from "lucide-react";
+import {
+  ArrowLeftIcon,
+  CalendarIcon,
+  CheckCircleIcon,
+  FileIcon,
+  FolderIcon,
+  Star,
+  UserIcon,
+} from "lucide-react";
 import * as mime from "mime-types";
 import * as React from "react";
 import { toast } from "sonner";
@@ -45,6 +53,7 @@ export async function loader({ params }: DataFunctionArgs) {
           category: true,
         },
       },
+      payment: true,
       editor: true,
       customer: true,
       customerDocuments: true,
@@ -124,6 +133,7 @@ export default function ProjectPage() {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const isProjectCompleted = project.status === ProjectStatus.completed;
+  const isPaymentReceived = project.payment !== null;
 
   const handleFileUpload = React.useCallback(
     async (file: File) => {
@@ -240,13 +250,13 @@ export default function ProjectPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-700">Your Bid</h3>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-emerald-600">
                   ${project.post.bids.find((bid) => bid.approved)?.price ?? 0}
                 </p>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-700">Customer</h3>
-                <p className="text-lg font-bold text-blue-600 flex items-center">
+                <p className="text-lg font-bold text-emerald-600 flex items-center">
                   <UserIcon className="w-5 h-5 mr-1" />
                   {project.customer.firstName} {project.customer.lastName}
                 </p>
@@ -254,60 +264,11 @@ export default function ProjectPage() {
             </div>
           </CardContent>
           <CardFooter className="flex flex-col space-y-4">
-            {(project.status === ProjectStatus.completed ||
-              project.status === ProjectStatus.payment_pending) && (
-              <div className="w-full mt-4 flex items-center justify-between bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className="h-8 w-8 text-green-500"
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">Project Completed</h3>
-                    <p className="text-sm text-gray-500">
-                      Great job! This project has been successfully completed.
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <div className="flex-shrink-0">
-                    <svg
-                      className={`h-8 w-8 ${project.status === ProjectStatus.completed ? "text-green-500" : "text-yellow-500"}`}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        strokeWidth={2}
-                        d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                      />
-                    </svg>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900">
-                      {project.status === ProjectStatus.completed
-                        ? "Payment Received"
-                        : "Payment Pending"}
-                    </h3>
-                    <p className="text-sm text-gray-500">
-                      {project.status === ProjectStatus.completed
-                        ? "The payment for this project has been processed."
-                        : "Waiting for the customer to complete the payment."}
-                    </p>
-                  </div>
+            {isProjectCompleted && isPaymentReceived && (
+              <div className="w-full flex items-center justify-between">
+                <div className="flex items-center bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg">
+                  <CheckCircleIcon className="w-5 h-5 mr-2" />
+                  <p className="font-semibold">Project completed and payment made successfully!</p>
                 </div>
               </div>
             )}
@@ -439,7 +400,7 @@ export default function ProjectPage() {
                   />
                   {isFileUploading && (
                     <div className="flex items-center justify-center">
-                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-blue-500" />
+                      <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-emerald-500" />
                     </div>
                   )}
                 </form>

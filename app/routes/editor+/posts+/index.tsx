@@ -240,7 +240,10 @@ export default function EditorPosts() {
                                     </p>
                                   )}
                                 </div>
-                                <Button type="submit" className="w-full">
+                                <Button
+                                  type="submit"
+                                  className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+                                >
                                   Submit Bid
                                 </Button>
                               </fetcher.Form>

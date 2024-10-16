@@ -291,27 +291,25 @@ export default function ProjectPage() {
               </div>
               <div>
                 <h3 className="font-semibold text-gray-700">Editor Price</h3>
-                <p className="text-2xl font-bold text-blue-600">
+                <p className="text-2xl font-bold text-emerald-600">
                   ${project.post.bids.find((bid) => bid.approved)?.price ?? 0}
                 </p>
               </div>
               <div>
                 <h3 className="font-semibold text-gray-700">Editor</h3>
-                <p className="text-lg font-bold text-blue-600 flex items-center">
+                <p className="text-lg font-bold text-emerald-600 flex items-center">
                   <UserIcon className="w-5 h-5 mr-1" />
                   {project.editor.firstName} {project.editor.lastName}
                 </p>
               </div>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col space-y-4">
+          <CardFooter className="flex flex-col space-y-4 items-start">
             {isProjectCompleted && isPaymentReceived && (
               <div className="w-full flex items-center justify-between">
-                <div className="flex items-center bg-green-100 text-green-700 px-4 py-2 rounded-lg">
+                <div className="flex items-center bg-emerald-100 text-emerald-700 px-4 py-2 rounded-lg">
                   <CheckCircleIcon className="w-5 h-5 mr-2" />
-                  <p className="font-semibold">
-                    Project completed and payment received successfully!
-                  </p>
+                  <p className="font-semibold">Project completed and payment made successfully!</p>
                 </div>
                 {!hasUserLeftFeedback && (
                   <Button
@@ -345,7 +343,7 @@ export default function ProjectPage() {
               <div className="flex gap-4">
                 <Button
                   onClick={() => setIsPaymentModalOpen(true)}
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-emerald-600 hover:bg-emerald-700 text-white"
                   disabled={paymentFetcher.isPending}
                 >
                   Make Payment
@@ -544,7 +542,7 @@ export default function ProjectPage() {
               </Button>
               <Button
                 type="submit"
-                className="bg-blue-600 hover:bg-blue-700 text-white"
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
                 disabled={paymentFetcher.isPending}
               >
                 {paymentFetcher.isPending ? "Processing..." : `Pay $${project.post.bids[0].price}`}
