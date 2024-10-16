@@ -3,7 +3,7 @@ import type { DataFunctionArgs, MetaFunction } from "@remix-run/node";
 import { json, redirect } from "@remix-run/node";
 import { Link, useFetcher, useLoaderData } from "@remix-run/react";
 import axios from "axios";
-import { ArrowLeftIcon, CalendarIcon, FileIcon, FolderIcon, UserIcon } from "lucide-react";
+import { ArrowLeftIcon, CalendarIcon, FileIcon, FolderIcon, Star, UserIcon } from "lucide-react";
 import * as mime from "mime-types";
 import * as React from "react";
 import { toast } from "sonner";
@@ -49,6 +49,7 @@ export async function loader({ params }: DataFunctionArgs) {
       customer: true,
       customerDocuments: true,
       editorDocuments: true,
+      feedback: true, // Add this line to include feedback
     },
   });
 
@@ -252,7 +253,7 @@ export default function ProjectPage() {
               </div>
             </div>
           </CardContent>
-          <CardFooter>
+          <CardFooter className="flex flex-col space-y-4">
             {(project.status === ProjectStatus.completed ||
               project.status === ProjectStatus.payment_pending) && (
               <div className="w-full mt-4 flex items-center justify-between bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
@@ -308,6 +309,26 @@ export default function ProjectPage() {
                     </p>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {project.feedback && project.feedback.length > 0 && (
+              <div className="w-full p-4 bg-gray-100 rounded-lg">
+                <h3 className="font-semibold text-lg mb-2">Customer Feedback</h3>
+                <div className="flex items-center mb-2">
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Star
+                      key={star}
+                      className={`w-5 h-5 ${
+                        star <= project.feedback[0].rating
+                          ? "text-yellow-500 fill-current"
+                          : "text-gray-300"
+                      }`}
+                    />
+                  ))}
+                  <span className="ml-2 text-gray-600">({project.feedback[0].rating}/5)</span>
+                </div>
+                <p className="text-gray-700">{project.feedback[0].comment}</p>
               </div>
             )}
           </CardFooter>

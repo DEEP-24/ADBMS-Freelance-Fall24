@@ -16,6 +16,7 @@ import {
   DialogTrigger,
 } from "~/components/ui/dialog";
 import { Input } from "~/components/ui/input";
+import { Label } from "~/components/ui/label";
 import { Textarea } from "~/components/ui/textarea";
 import { db } from "~/lib/db.server";
 import { requireUserId } from "~/lib/session.server";
@@ -207,11 +208,14 @@ export default function EditorPosts() {
                               <fetcher.Form method="post" className="space-y-4">
                                 <input type="hidden" name="postId" value={post.id} />
                                 <div>
+                                  <Label htmlFor="price">Bid Price</Label>
                                   <Input
+                                    id="price"
                                     name="price"
                                     type="number"
                                     placeholder="Enter your bid price"
                                     min="1"
+                                    max={post.budget}
                                     step="0.01"
                                     required
                                   />
@@ -222,7 +226,9 @@ export default function EditorPosts() {
                                   )}
                                 </div>
                                 <div>
+                                  <Label htmlFor="comment">Comment</Label>
                                   <Textarea
+                                    id="comment"
                                     name="comment"
                                     placeholder="Enter your comment"
                                     required

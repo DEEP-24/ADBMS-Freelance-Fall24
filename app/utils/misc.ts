@@ -14,6 +14,7 @@ export function useOptionalUser() {
 
   if (data.admin) {
     return {
+      id: data.admin.id,
       name: `${data.admin.firstName} ${data.admin.lastName}`,
       email: data.admin.email,
       role: UserRole.ADMIN,
@@ -21,6 +22,7 @@ export function useOptionalUser() {
   }
   if (data.editor) {
     return {
+      id: data.editor.id,
       name: `${data.editor.firstName} ${data.editor.lastName}`,
       email: data.editor.email,
       role: UserRole.EDITOR,
@@ -28,6 +30,7 @@ export function useOptionalUser() {
   }
   if (data.customer) {
     return {
+      id: data.customer.id,
       name: `${data.customer.firstName} ${data.customer.lastName}`,
       email: data.customer.email,
       role: UserRole.CUSTOMER,
